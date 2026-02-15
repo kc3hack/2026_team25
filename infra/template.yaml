@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Wagamama Gourmet minimal serverless scaffold
+
+Resources:
+  ScoreFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: cmd/lambda/main
+      Runtime: go1.x
+      CodeUri: ../backend-go
+      MemorySize: 256
+      Timeout: 10
+      Events:
+        ScoreApi:
+          Type: Api
+          Properties:
+            Path: /score
+            Method: post
+
+  StoresTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH

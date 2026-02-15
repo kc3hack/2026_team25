@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+.env
+.env.*
+
+bin/
+*.exe
+*.test
+
+.DS_Store
+Thumbs.db
