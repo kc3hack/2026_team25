@@ -27,8 +27,48 @@ const SCORE_TO_LABEL: Record<(typeof SCORE_KEYS)[number], keyof typeof WEIGHT_LA
   speed_score: "speed",
 };
 
+/** 五角形の各頂点の角度（上から時計回り） */
+const AXIS_COUNT = 5;
+const ANGLE_OFFSET = -Math.PI / 2; // 上始まり
+
+function polarToXY(cx: number, cy: number, r: number, i: number) {
+  const angle = ANGLE_OFFSET + (2 * Math.PI * i) / AXIS_COUNT;
+  return {
+    x: cx + r * Math.cos(angle),
+    y: cy + r * Math.sin(angle),
+  };
+}
+
+function buildPolygonPoints(cx: number, cy: number, r: number): string {
+  return Array.from({ length: AXIS_COUNT }, (_, i) => {
+    const p = polarToXY(cx, cy, r, i);
+    return `${p.x},${p.y}`;
+  }).join(" ");
+}
+
+function buildDataPoints(
+  cx: number,
+  cy: number,
+  maxR: number,
+  values: readonly number[]
+): string {
+  return values
+    .map((v, i) => {
+      const p = polarToXY(cx, cy, maxR * v, i);
+      return `${p.x},${p.y}`;
+    })
+    .join(" ");
+}
+
+const CHART_SIZE = 160;
+const CENTER = CHART_SIZE / 2;
+const MAX_R = CHART_SIZE / 2 - 24;
+const GRID_STEPS = [0.25, 0.5, 0.75, 1.0];
+
 export default function StoreCard({ store, onClose }: StoreCardProps) {
   if (!store) return null;
+
+  const values = SCORE_KEYS.map((k) => store[k]);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
@@ -54,26 +94,69 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
         </span>
       </div>
 
-      <div className="mt-3 flex flex-col gap-1.5">
-        {SCORE_KEYS.map((key) => {
-          const value = store[key];
-          return (
-            <div key={key} className="flex items-center gap-2 text-xs">
-              <span className="w-16 shrink-0 text-gray-500">
+      {/* --- レーダーチャート（五角形） --- */}
+      <div className="mt-3 flex justify-center">
+        <svg width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`}>
+          {/* グリッド線 */}
+          {GRID_STEPS.map((step) => (
+            <polygon
+              key={step}
+              points={buildPolygonPoints(CENTER, CENTER, MAX_R * step)}
+              fill="none"
+              stroke="#e5e7eb"
+              strokeWidth={1}
+            />
+          ))}
+
+          {/* 軸線 */}
+          {SCORE_KEYS.map((_, i) => {
+            const p = polarToXY(CENTER, CENTER, MAX_R, i);
+            return (
+              <line
+                key={i}
+                x1={CENTER}
+                y1={CENTER}
+                x2={p.x}
+                y2={p.y}
+                stroke="#e5e7eb"
+                strokeWidth={1}
+              />
+            );
+          })}
+
+          {/* データ領域 */}
+          <polygon
+            points={buildDataPoints(CENTER, CENTER, MAX_R, values)}
+            fill="rgba(16, 185, 129, 0.2)"
+            stroke="#10b981"
+            strokeWidth={2}
+          />
+
+          {/* データ頂点 */}
+          {values.map((v, i) => {
+            const p = polarToXY(CENTER, CENTER, MAX_R * v, i);
+            return (
+              <circle key={i} cx={p.x} cy={p.y} r={3} fill="#10b981" />
+            );
+          })}
+
+          {/* ラベル */}
+          {SCORE_KEYS.map((key, i) => {
+            const p = polarToXY(CENTER, CENTER, MAX_R + 16, i);
+            return (
+              <text
+                key={key}
+                x={p.x}
+                y={p.y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="fill-gray-500 text-[10px]"
+              >
                 {WEIGHT_LABELS[SCORE_TO_LABEL[key]]}
-              </span>
-              <div className="h-1.5 flex-1 rounded-full bg-gray-200">
-                <div
-                  className="h-1.5 rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${value * 100}%` }}
-                />
-              </div>
-              <span className="w-7 shrink-0 text-right text-gray-400">
-                {(value * 100).toFixed(0)}
-              </span>
-            </div>
-          );
-        })}
+              </text>
+            );
+          })}
+        </svg>
       </div>
     </div>
   );
