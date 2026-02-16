@@ -62,3 +62,4 @@ export const WEIGHT_LABELS: Record<keyof Weights, string> = {
   vibe: "雰囲気",
   speed: "スピード",
 };
+

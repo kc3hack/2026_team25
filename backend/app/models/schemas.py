@@ -1,3 +1,43 @@
+from pydantic import BaseModel
+
+
+class StoreSchema(BaseModel):
+    id: str
+    name: str
+    lat: float
+    lng: float
+    genre: str
+    price_score: float
+    access_score: float
+    rating_score: float
+    vibe_score: float
+    speed_score: float
+
+
+class StoreResponse(BaseModel):
+    stores: list[StoreSchema]
+
+
+class WeightsSchema(BaseModel):
+    price: int
+    access: int
+    rating: int
+    vibe: int
+    speed: int
+
+
+class ScoreRequest(BaseModel):
+    store_ids: list[str]
+    weights: WeightsSchema
+
+
+class ScoreItem(BaseModel):
+    store_id: str
+    normalized_score: float
+
+
+class ScoreResponse(BaseModel):
+    scores: list[ScoreItem]
 # ============================================
 # models/schemas.py — Pydanticスキーマ定義
 # 【D専任】このファイルは D のみが編集する
