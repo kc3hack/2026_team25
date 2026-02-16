@@ -1,15 +1,43 @@
+# ============================================
+# .gitignore — プロジェクト全体
+# 【D管理】
+# ============================================
+
+# --- Node ---
 node_modules/
-.next/
-out/
 dist/
-coverage/
+dist-ssr/
+*.local
 
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- Environment ---
 .env
-.env.*
+.env.local
+.env.*.local
 
-bin/
-*.exe
-*.test
-
+# --- IDE ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 .DS_Store
-Thumbs.db
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+
+# --- Build ---
+build/
+*.tsbuildinfo
