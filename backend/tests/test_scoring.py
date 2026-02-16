@@ -3,7 +3,47 @@
 # 【C専任】このファイルは C のみが編集する
 # ============================================
 
+import os
+
+os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
+os.environ.setdefault("SUPABASE_KEY", "dummy-anon-key")
+
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.routers import stores as stores_router
 from app.services.scoring import calculate_normalized_score
+
+
+class _FakeResponse:
+    def __init__(self, data):
+        self.data = data
+
+
+class _FakeQuery:
+    def __init__(self, data=None, error=None):
+        self._data = data or []
+        self._error = error
+
+    def select(self, *_args, **_kwargs):
+        return self
+
+    def in_(self, *_args, **_kwargs):
+        return self
+
+    def execute(self):
+        if self._error:
+            raise self._error
+        return _FakeResponse(self._data)
+
+
+class _FakeSupabase:
+    def __init__(self, data=None, error=None):
+        self._data = data or []
+        self._error = error
+
+    def table(self, _name):
+        return _FakeQuery(data=self._data, error=self._error)
 
 
 class TestCalculateNormalizedScore:
@@ -118,3 +158,160 @@ class TestCalculateNormalizedScore:
 
         assert calculate_normalized_score(high_store, weights) == 1.0
         assert calculate_normalized_score(low_store, weights) == 0.0
+
+
+class TestScoreApi:
+    """/api/stores/score のAPI挙動テスト"""
+
+    def test_post_score_returns_400_when_store_ids_empty(self):
+        client = TestClient(app)
+
+        response = client.post(
+            "/api/stores/score",
+            json={
+                "store_ids": [],
+                "weights": {
+                    "price": 50,
+                    "access": 50,
+                    "rating": 50,
+                    "vibe": 50,
+                    "speed": 50,
+                },
+            },
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == stores_router.ERROR_EMPTY_STORE_IDS
+
+    def test_post_score_preserves_request_order(self, monkeypatch):
+        client = TestClient(app)
+
+        fake_data = [
+            {
+                "id": "store_002",
+                "price_score": 0.3,
+                "access_score": 0.6,
+                "rating_score": 0.9,
+                "vibe_score": 0.95,
+                "speed_score": 0.4,
+            },
+            {
+                "id": "store_001",
+                "price_score": 0.9,
+                "access_score": 0.8,
+                "rating_score": 0.7,
+                "vibe_score": 0.3,
+                "speed_score": 0.9,
+            },
+        ]
+        monkeypatch.setattr(stores_router, "supabase", _FakeSupabase(data=fake_data))
+
+        request_order = ["store_001", "store_002"]
+        response = client.post(
+            "/api/stores/score",
+            json={
+                "store_ids": request_order,
+                "weights": {
+                    "price": 90,
+                    "access": 70,
+                    "rating": 30,
+                    "vibe": 10,
+                    "speed": 50,
+                },
+            },
+        )
+
+        assert response.status_code == 200
+        ids = [item["store_id"] for item in response.json()["scores"]]
+        assert ids == request_order
+
+    def test_post_score_falls_back_to_seed_when_db_fails(self, monkeypatch):
+        client = TestClient(app)
+
+        monkeypatch.setattr(
+            stores_router,
+            "supabase",
+            _FakeSupabase(error=RuntimeError("db down")),
+        )
+        monkeypatch.setattr(
+            stores_router,
+            "_load_seed_stores",
+            lambda: [
+                {
+                    "id": "store_001",
+                    "price_score": 0.9,
+                    "access_score": 0.8,
+                    "rating_score": 0.7,
+                    "vibe_score": 0.3,
+                    "speed_score": 0.9,
+                }
+            ],
+        )
+
+        response = client.post(
+            "/api/stores/score",
+            json={
+                "store_ids": ["store_001", "store_999"],
+                "weights": {
+                    "price": 90,
+                    "access": 70,
+                    "rating": 30,
+                    "vibe": 10,
+                    "speed": 50,
+                },
+            },
+        )
+
+        assert response.status_code == 200
+        scores = response.json()["scores"]
+        assert len(scores) == 1
+        assert scores[0]["store_id"] == "store_001"
+
+    def test_get_stores_falls_back_to_seed_when_db_fails(self, monkeypatch):
+        client = TestClient(app)
+
+        monkeypatch.setattr(
+            stores_router,
+            "supabase",
+            _FakeSupabase(error=RuntimeError("db down")),
+        )
+        monkeypatch.setattr(
+            stores_router,
+            "_load_seed_stores",
+            lambda: [
+                {
+                    "id": "store_001",
+                    "name": "Seed Store",
+                    "lat": 34.99,
+                    "lng": 135.74,
+                    "genre": "seed",
+                    "price_score": 0.9,
+                    "access_score": 0.8,
+                    "rating_score": 0.7,
+                    "vibe_score": 0.3,
+                    "speed_score": 0.9,
+                }
+            ],
+        )
+
+        response = client.get("/api/stores")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert len(payload["stores"]) == 1
+        assert payload["stores"][0]["id"] == "store_001"
+
+    def test_get_stores_returns_503_when_db_and_seed_unavailable(self, monkeypatch):
+        client = TestClient(app)
+
+        monkeypatch.setattr(
+            stores_router,
+            "supabase",
+            _FakeSupabase(error=RuntimeError("db down")),
+        )
+        monkeypatch.setattr(stores_router, "_load_seed_stores", lambda: [])
+
+        response = client.get("/api/stores")
+
+        assert response.status_code == 503
+        assert response.json()["detail"] == stores_router.ERROR_DB_AND_FALLBACK_UNAVAILABLE
