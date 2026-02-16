@@ -27,7 +27,10 @@ export default function SliderGroup({ weights, onChange }: SliderGroupProps) {
             max={100}
             value={weights[key]}
             onChange={(e) => onChange(key, Number(e.target.value))}
-            className="w-full accent-emerald-500"
+            className="h-2 w-full cursor-pointer appearance-none rounded-full accent-emerald-500"
+            style={{
+              background: `linear-gradient(to right, #10b981 0%, #10b981 ${weights[key]}%, #e5e7eb ${weights[key]}%, #e5e7eb 100%)`,
+            }}
           />
         </div>
       ))}

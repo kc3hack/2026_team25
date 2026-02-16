@@ -8,6 +8,7 @@ import { PRESETS } from "../../types";
 
 interface PresetButtonsProps {
   onSelect: (weights: Weights) => void;
+  onReset?: () => void;
 }
 
 const PRESET_STYLES: Record<string, string> = {
@@ -16,7 +17,7 @@ const PRESET_STYLES: Record<string, string> = {
   "急ぎモード": "bg-amber-500 hover:bg-amber-600",
 };
 
-export default function PresetButtons({ onSelect }: PresetButtonsProps) {
+export default function PresetButtons({ onSelect, onReset }: PresetButtonsProps) {
   return (
     <div className="flex flex-col gap-2 p-4">
       <h2 className="text-lg font-bold">プリセット</h2>
@@ -31,6 +32,14 @@ export default function PresetButtons({ onSelect }: PresetButtonsProps) {
           </button>
         ))}
       </div>
+      {onReset && (
+        <button
+          onClick={onReset}
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-100"
+        >
+          リセット
+        </button>
+      )}
     </div>
   );
 }

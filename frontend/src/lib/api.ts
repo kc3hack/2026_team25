@@ -4,19 +4,28 @@
 // ============================================
 
 import type { Store } from "../types";
+import { DUMMY_STORES } from "./dummyStores";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 /**
  * 全店舗データを取得する
+ * バックエンド未起動時はダミーデータにフォールバック
  */
 export async function fetchStores(): Promise<Store[]> {
-  const res = await fetch(`${API_BASE}/api/stores`);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch stores: ${res.status}`);
+  if (!API_BASE) {
+    return DUMMY_STORES;
   }
-  const data = await res.json();
-  return data.stores;
+  try {
+    const res = await fetch(`${API_BASE}/api/stores`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch stores: ${res.status}`);
+    }
+    const data = await res.json();
+    return data.stores;
+  } catch {
+    return DUMMY_STORES;
+  }
 }
 
 /**
