@@ -1,23 +1,19 @@
-// ============================================
-// MapView.tsx — 地図本体コンポーネント
-// 【A専任】このファイルは A のみが編集する
-// ============================================
-
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
-import type { StoreWithScore } from "../../types";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "../../styles/map.css";
+import type { StoreWithScore } from "../../types";
 
 /** KRP（京都リサーチパーク）の座標 */
 const KRP_CENTER = { lng: 135.7467, lat: 34.9937 };
 const DEFAULT_ZOOM = 15;
 
 interface MapViewProps {
-  stores: StoreWithScore[];
+  stores?: StoreWithScore[];
 }
 
-export default function MapView({ stores }: MapViewProps) {
-  const mapContainer = useRef<HTMLDivElement>(null);
+export default function MapView({ stores = [] }: MapViewProps) {
+  const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
 
@@ -31,6 +27,12 @@ export default function MapView({ stores }: MapViewProps) {
       center: [KRP_CENTER.lng, KRP_CENTER.lat],
       zoom: DEFAULT_ZOOM,
     });
+
+    try {
+      mapRef.current.addControl(new maplibregl.NavigationControl(), "top-right");
+    } catch (e) {
+      // ignore if control not available in some envs
+    }
 
     return () => {
       mapRef.current?.remove();
@@ -64,7 +66,10 @@ export default function MapView({ stores }: MapViewProps) {
 
       markersRef.current.push(marker);
     });
+
+    // map のサイズ調整（外部でコンテナサイズが変わったとき用）
+    mapRef.current.resize();
   }, [stores]);
 
-  return <div ref={mapContainer} className="map-container" />;
+  return <div ref={mapContainer} className="map-container" style={{ width: "100%", height: "100%" }} />;
 }
