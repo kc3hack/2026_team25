@@ -1,3 +1,71 @@
+import pytest
+
+from app.services.scoring import calculate_normalized_score
+
+
+def test_all_weights_zero_returns_zero():
+    store = {
+        "price_score": 0.5,
+        "access_score": 0.5,
+        "rating_score": 0.5,
+        "vibe_score": 0.5,
+        "speed_score": 0.5,
+    }
+    weights = {"price": 0, "access": 0, "rating": 0, "vibe": 0, "speed": 0}
+
+    assert calculate_normalized_score(store, weights) == 0.0
+
+
+def test_kinketsu_preset_prefers_cheap_store():
+    # 金欠モード重み（price重視）
+    weights = {"price": 90, "access": 70, "rating": 30, "vibe": 10, "speed": 50}
+
+    cheap_store = {
+        "price_score": 1.0,
+        "access_score": 0.6,
+        "rating_score": 0.4,
+        "vibe_score": 0.2,
+        "speed_score": 0.7,
+    }
+
+    expensive_store = {
+        "price_score": 0.1,
+        "access_score": 0.8,
+        "rating_score": 0.8,
+        "vibe_score": 0.7,
+        "speed_score": 0.5,
+    }
+
+    s_cheap = calculate_normalized_score(cheap_store, weights)
+    s_exp = calculate_normalized_score(expensive_store, weights)
+
+    assert s_cheap > s_exp
+
+
+def test_date_preset_prefers_vibe():
+    # デートモード重み（vibe重視）
+    weights = {"price": 20, "access": 40, "rating": 60, "vibe": 95, "speed": 30}
+
+    vibe_store = {
+        "price_score": 0.3,
+        "access_score": 0.5,
+        "rating_score": 0.6,
+        "vibe_score": 1.0,
+        "speed_score": 0.4,
+    }
+
+    non_vibe_store = {
+        "price_score": 0.6,
+        "access_score": 0.7,
+        "rating_score": 0.8,
+        "vibe_score": 0.2,
+        "speed_score": 0.6,
+    }
+
+    s_vibe = calculate_normalized_score(vibe_store, weights)
+    s_non = calculate_normalized_score(non_vibe_store, weights)
+
+    assert s_vibe > s_non
 # ============================================
 # test_scoring.py — スコア計算テスト
 # 【C専任】このファイルは C のみが編集する
