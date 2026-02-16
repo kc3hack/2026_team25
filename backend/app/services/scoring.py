@@ -36,4 +36,5 @@ def calculate_normalized_score(store: dict, weights: dict) -> float:
         + store.get("speed_score", 0) * weights.get("speed", 0)
     ) / total_weight
 
+    score = max(0.0, min(1.0, score))
     return round(score, 4)

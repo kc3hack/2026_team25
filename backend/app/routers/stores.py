@@ -45,6 +45,9 @@ async def get_stores():
 @router.post("/stores/score", response_model=ScoreResponse)
 async def calculate_scores(request: ScoreRequest):
     """サーバー側でスコアを計算して返す（検証用・将来拡張用）"""
+    if not request.store_ids:
+        raise HTTPException(status_code=400, detail="store_ids must not be empty")
+
     try:
         response = (
             supabase.table("stores")
@@ -59,9 +62,14 @@ async def calculate_scores(request: ScoreRequest):
         stores = [store for store in fallback_stores if store.get("id") in store_id_set]
 
     weights = request.weights.model_dump()
+    stores_by_id = {store.get("id"): store for store in stores}
+
     scores = []
-    for store in stores:
+    for store_id in request.store_ids:
+        store = stores_by_id.get(store_id)
+        if not store:
+            continue
         score = calculate_normalized_score(store, weights)
-        scores.append(ScoreItem(store_id=store["id"], normalized_score=score))
+        scores.append(ScoreItem(store_id=store_id, normalized_score=score))
 
     return ScoreResponse(scores=scores)

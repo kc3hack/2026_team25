@@ -3,7 +3,6 @@
 # 【C専任】このファイルは C のみが編集する
 # ============================================
 
-import pytest
 from app.services.scoring import calculate_normalized_score
 
 
@@ -84,3 +83,38 @@ class TestCalculateNormalizedScore:
         }
         weights = {"price": 100, "access": 0, "rating": 0, "vibe": 0, "speed": 0}
         assert calculate_normalized_score(store, weights) == 0.7
+
+    def test_exact_weighted_average_rounding(self):
+        """加重平均の小数第4位丸めが正しい"""
+        store = {
+            "price_score": 0.91,
+            "access_score": 0.42,
+            "rating_score": 0.77,
+            "vibe_score": 0.35,
+            "speed_score": 0.68,
+        }
+        weights = {"price": 90, "access": 70, "rating": 30, "vibe": 10, "speed": 50}
+
+        # 手計算値: 0.6876...
+        assert calculate_normalized_score(store, weights) == 0.6876
+
+    def test_score_is_clamped_between_zero_and_one(self):
+        """異常値が入ってもスコアは 0.0〜1.0 にクランプされる"""
+        high_store = {
+            "price_score": 1.5,
+            "access_score": 1.6,
+            "rating_score": 1.4,
+            "vibe_score": 1.2,
+            "speed_score": 1.8,
+        }
+        low_store = {
+            "price_score": -0.5,
+            "access_score": -0.4,
+            "rating_score": -0.2,
+            "vibe_score": -0.3,
+            "speed_score": -0.1,
+        }
+        weights = {"price": 50, "access": 50, "rating": 50, "vibe": 50, "speed": 50}
+
+        assert calculate_normalized_score(high_store, weights) == 1.0
+        assert calculate_normalized_score(low_store, weights) == 0.0
