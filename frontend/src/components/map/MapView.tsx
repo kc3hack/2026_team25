@@ -21,6 +21,8 @@ export default function MapView({ stores }: MapViewProps) {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
 
+  
+
   // 地図の初期化
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
@@ -51,6 +53,9 @@ export default function MapView({ stores }: MapViewProps) {
       el.className = `map-pin ${store.visible ? "map-pin--visible" : "map-pin--hidden"}`;
       el.style.width = `${store.pinSize}px`;
       el.style.height = `${store.pinSize}px`;
+      // set CSS variable used by map.css for color interpolation (0.0 - 1.0)
+      el.style.setProperty("--score", String(store.normalizedScore));
+      // keep explicit backgroundColor as fallback for older browsers
       el.style.backgroundColor = store.pinColor;
 
       const marker = new maplibregl.Marker({ element: el })

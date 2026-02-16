@@ -14,6 +14,8 @@
     height 0.3s ease,
     background-color 0.3s ease,
     opacity 0.3s ease;
+  /* color is driven by --score (0.0 - 1.0). hue: 0 = red -> 120 = green */
+  background: hsl(calc(var(--score, 0) * 120), 65%, 50%);
 }
 
 /* --- ピン非表示時のフェードアウト --- */
