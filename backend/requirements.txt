@@ -1,3 +1,11 @@
+fastapi>=0.95
+uvicorn[standard]>=0.18
+pydantic>=1.10
+supabase>=1.0
+python-dotenv>=1.0
+httpx>=0.23
+pytest>=7.0
+pytest-asyncio>=0.21
 fastapi>=0.115.0
 uvicorn>=0.30.0
 supabase>=2.0.0
