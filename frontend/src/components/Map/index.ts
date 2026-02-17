@@ -3,3 +3,4 @@
 // 【A専任】
 // ============================================
 export { default as MapView } from "./MapView";
+export { MapMarker } from "./MapMarker";

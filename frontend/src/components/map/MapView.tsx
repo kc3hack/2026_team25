@@ -4,8 +4,10 @@
 // ============================================
 
 import { useEffect, useRef } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import maplibregl from "maplibre-gl";
 import type { StoreWithScore } from "../../types";
+import { MapMarker } from "./MapMarker";
 import "../../styles/map.css";
 
 /** KRP（京都リサーチパーク）の座標 */
@@ -19,11 +21,15 @@ interface MapViewProps {
 export default function MapView({ stores }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const markersRef = useRef<
+    Map<string, { marker: maplibregl.Marker; root: Root }>
+  >(new Map());
 
   // 地図の初期化
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
+
+    const markers = markersRef.current;
 
     mapRef.current = new maplibregl.Map({
       container: mapContainer.current,
@@ -33,6 +39,12 @@ export default function MapView({ stores }: MapViewProps) {
     });
 
     return () => {
+      // Cleanup roots before removing markers
+      markers.forEach(({ marker, root }) => {
+        if (root) root.unmount();
+        marker.remove();
+      });
+      markers.clear();
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -42,16 +54,30 @@ export default function MapView({ stores }: MapViewProps) {
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // 既存マーカーを全削除
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    const nextStoreIds = new Set(stores.map((store) => store.id));
+
+    // 削除された店舗のマーカーを掃除
+    markersRef.current.forEach(({ marker, root }, storeId) => {
+      if (!nextStoreIds.has(storeId)) {
+        root.unmount();
+        marker.remove();
+        markersRef.current.delete(storeId);
+      }
+    });
 
     stores.forEach((store) => {
+      const existing = markersRef.current.get(store.id);
+
+      if (existing) {
+        // 既存マーカーは再利用し、React描画のみ更新
+        existing.marker.setLngLat([store.lng, store.lat]);
+        existing.root.render(<MapMarker store={store} />);
+        return;
+      }
+
       const el = document.createElement("div");
-      el.className = `map-pin ${store.visible ? "map-pin--visible" : "map-pin--hidden"}`;
-      el.style.width = `${store.pinSize}px`;
-      el.style.height = `${store.pinSize}px`;
-      el.style.backgroundColor = store.pinColor;
+      const root = createRoot(el);
+      root.render(<MapMarker store={store} />);
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([store.lng, store.lat])
@@ -62,7 +88,7 @@ export default function MapView({ stores }: MapViewProps) {
         )
         .addTo(mapRef.current!);
 
-      markersRef.current.push(marker);
+      markersRef.current.set(store.id, { marker, root });
     });
   }, [stores]);
 
