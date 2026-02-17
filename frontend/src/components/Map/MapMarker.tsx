@@ -10,7 +10,7 @@ export function MapMarker({ store }: MapMarkerProps) {
   const controls = useAnimation();
   const prevScoreRef = useRef(store.normalizedScore);
 
-  // "Purun" animation trigger when score crosses 0.7 threshold
+  // "Purun" animation trigger when score crosses 0.7 threshold.
   useEffect(() => {
     const prevScore = prevScoreRef.current;
     const currentScore = store.normalizedScore;
@@ -33,8 +33,8 @@ export function MapMarker({ store }: MapMarkerProps) {
   }, [store.normalizedScore, controls]);
 
   const isRecommended = store.normalizedScore > 0.7;
-  // 視覚的インパクトを強めるため、表示サイズを 6px〜44px に拡張
-  const size = 6 + store.normalizedScore * 38;
+  // 視覚的インパクトを少しだけ強めるため、表示サイズを 5px〜45px に拡張
+  const size = 5 + store.normalizedScore * 40;
 
   // Color based on score (from detail.md interpolation rules)
   const getBackgroundStyle = () => {
