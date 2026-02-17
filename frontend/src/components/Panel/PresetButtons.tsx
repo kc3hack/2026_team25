@@ -11,9 +11,9 @@ interface PresetButtonsProps {
 }
 
 const PRESET_STYLES: Record<string, string> = {
-  "金欠モード": "bg-blue-500 hover:bg-blue-600",
-  "デートモード": "bg-pink-500 hover:bg-pink-600",
-  "急ぎモード": "bg-amber-500 hover:bg-amber-600",
+  "金欠モード": "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+  "デートモード": "bg-pink-500 hover:bg-pink-600 active:bg-pink-700",
+  "急ぎモード": "bg-amber-500 hover:bg-amber-600 active:bg-amber-700",
 };
 
 export default function PresetButtons({ onSelect }: PresetButtonsProps) {
@@ -24,8 +24,9 @@ export default function PresetButtons({ onSelect }: PresetButtonsProps) {
         {Object.entries(PRESETS).map(([name, weights]) => (
           <button
             key={name}
+            type="button"
             onClick={() => onSelect(weights)}
-            className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold text-white transition-colors ${PRESET_STYLES[name] ?? "bg-gray-500"}`}
+            className={`min-h-[44px] flex-1 cursor-pointer rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:shadow-md ${PRESET_STYLES[name] ?? "bg-gray-500 hover:bg-gray-600"}`}
           >
             {name}
           </button>

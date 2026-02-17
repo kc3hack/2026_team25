@@ -19,7 +19,9 @@ export default function SliderGroup({ weights, onChange }: SliderGroupProps) {
         <div key={key} className="flex flex-col gap-1">
           <label className="flex justify-between text-sm font-medium">
             <span>{WEIGHT_LABELS[key]}</span>
-            <span className="text-gray-500">{weights[key]}</span>
+            <span className="min-w-10 text-right tabular-nums text-gray-500">
+              {weights[key]}
+            </span>
           </label>
           <input
             type="range"
@@ -27,7 +29,7 @@ export default function SliderGroup({ weights, onChange }: SliderGroupProps) {
             max={100}
             value={weights[key]}
             onChange={(e) => onChange(key, Number(e.target.value))}
-            className="w-full accent-emerald-500"
+            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-200 accent-emerald-500"
           />
         </div>
       ))}
