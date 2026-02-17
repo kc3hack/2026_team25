@@ -35,6 +35,59 @@
   transition: transform 0.15s ease;
 }
 
+/* --- Common Pin Style (score <= 0.7) --- */
+.map-pin--common {
+  background: hsl(calc(var(--score, 0) * 120), 65%, 50%);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+/* --- Recommended Pin Style (score > 0.7) --- */
+.map-pin--recommended {
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.map-pin--recommended::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 215, 0, 0.2) 0%,
+    rgba(255, 105, 180, 0.2) 100%
+  );
+  animation: shimmer 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* --- Fork & Spoon Icon Container --- */
+.map-pin__icon {
+  position: relative;
+  z-index: 1;
+  color: white;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* --- 地図コンテナ --- */
 .map-container {
   width: 100%;
