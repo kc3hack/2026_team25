@@ -25,7 +25,10 @@ const TABS: ReadonlyArray<{
 
 export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   return (
-    <nav className="flex h-14 shrink-0 border-t border-gray-200 bg-white md:hidden">
+    <nav
+      className="flex h-14 shrink-0 border-t-2 border-black bg-[#FDFBF7] pb-[env(safe-area-inset-bottom)] md:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       {TABS.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
@@ -37,11 +40,11 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             onClick={() => onTabChange(tab.id)}
             className={`flex min-h-[44px] flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 text-xs transition-colors duration-200 ${
               isActive
-                ? "font-semibold text-emerald-600"
-                : "text-gray-400"
+                ? "font-black text-black"
+                : "font-semibold text-gray-500"
             }`}
           >
-            <tab.Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+            <tab.Icon size={20} strokeWidth={isActive ? 2.8 : 1.8} />
             <span>{tab.label}</span>
           </button>
         );

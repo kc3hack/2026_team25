@@ -28,9 +28,9 @@ export default function PresetButtons({ onSelect }: PresetButtonsProps) {
             key={name}
             type="button"
             onClick={() => onSelect(weights)}
-            className={`flex h-24 cursor-pointer flex-col justify-end rounded-2xl bg-linear-to-br ${gradient} p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98]`}
+            className={`flex h-24 cursor-pointer flex-col justify-end rounded-2xl border-2 border-black bg-linear-to-br ${gradient} p-4 text-left shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]`}
           >
-            <span className="text-base font-bold text-white">{name}</span>
+            <span className="text-base font-black text-white drop-shadow-sm">{name}</span>
           </button>
         );
       })}

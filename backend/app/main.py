@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.routers import stores
+from app.routers.chat import router as chat_router
 
 app = FastAPI(
     title="Wagamama Gourmet API",
@@ -25,6 +26,7 @@ app.add_middleware(
 )
 
 app.include_router(stores.router, prefix="/api")
+app.include_router(chat_router, prefix="/api")
 
 
 def _error_response(status_code: int, code: str, message: str, hint: str | None = None) -> JSONResponse:

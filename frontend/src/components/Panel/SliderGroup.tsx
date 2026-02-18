@@ -31,10 +31,10 @@ export default function SliderGroup({ weights, onChange }: SliderGroupProps) {
   return (
     <div className="flex flex-col gap-4 p-4">
       {(Object.keys(WEIGHT_LABELS) as (keyof Weights)[]).map((key) => (
-        <div key={key} className="flex flex-col gap-2">
-          <label className="grid grid-cols-[1fr_auto_1fr] items-center text-sm font-medium">
-            <span className="text-center">{DISPLAY_LABELS[key]}</span>
-            <span className="min-w-10 text-center tabular-nums text-gray-500">
+        <div key={key} className="rounded-xl border-2 border-black bg-white p-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+          <label className="grid grid-cols-[1fr_auto_1fr] items-center text-sm font-black">
+            <span className="text-center text-black">{DISPLAY_LABELS[key]}</span>
+            <span className="min-w-10 rounded-md border border-black bg-black px-1.5 py-0.5 text-center tabular-nums text-xs text-white">
               {weights[key]}
             </span>
             <span />
@@ -45,12 +45,12 @@ export default function SliderGroup({ weights, onChange }: SliderGroupProps) {
             max={100}
             value={weights[key]}
             onChange={(e) => onChange(key, Number(e.target.value))}
-            className="slider-custom h-[5px] w-full cursor-pointer appearance-none rounded-full"
+            className="slider-custom mt-2 h-[8px] w-full cursor-pointer appearance-none rounded-full border border-black"
             style={{
-              background: `linear-gradient(to right, #34d399 ${weights[key]}%, #e5e7eb ${weights[key]}%)`,
+              background: `linear-gradient(to right, #BEEF9E ${weights[key]}%, #f3f4f6 ${weights[key]}%)`,
             }}
           />
-          <div className="grid grid-cols-2 text-xs text-gray-400">
+          <div className="mt-2 grid grid-cols-2 text-xs font-semibold text-gray-500">
             <span className="text-left">{DIRECTION_LABELS[key].left}</span>
             <span className="text-right">{DIRECTION_LABELS[key].right}</span>
           </div>
