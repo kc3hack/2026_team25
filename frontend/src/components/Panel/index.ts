@@ -7,4 +7,7 @@ export { default as PresetButtons } from "./PresetButtons";
 export { default as StoreCard } from "./StoreCard";
 export { default as BottomNav } from "./BottomNav";
 export { default as ChatPlaceholder } from "./ChatPlaceholder";
+export { default as SearchBar } from "./SearchBar";
+export { default as GenrePresets } from "./GenrePresets";
+export { default as SliderDrawer } from "./SliderDrawer";
 export type { Tab } from "./BottomNav";

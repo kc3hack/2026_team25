@@ -4,12 +4,15 @@
 // ============================================
 
 import { useEffect, useState, useMemo } from "react";
-import { MapView } from "./components/Map";
+import { MapView } from "./components/map";
 import {
   SliderGroup,
   PresetButtons,
   BottomNav,
   ChatPlaceholder,
+  SearchBar,
+  GenrePresets,
+  SliderDrawer,
 } from "./components/Panel";
 import type { Tab } from "./components/Panel";
 import { useWeights } from "./hooks/useWeights";
@@ -22,6 +25,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("map");
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const { weights, updateWeight, applyPreset } = useWeights();
 
   // 初回: APIから店舗データ取得
@@ -40,8 +44,17 @@ function App() {
     [stores, weights]
   );
 
-  // パネル内容（デスクトップサイドバー & モバイルホームタブ共用）
-  const panelContent = (
+  // ジャンルフィルター適用
+  const filteredStores = useMemo(
+    () =>
+      selectedGenre
+        ? storesWithScore.filter((s) => s.genre === selectedGenre)
+        : storesWithScore,
+    [storesWithScore, selectedGenre]
+  );
+
+  // ホームタブ内容 (モバイル用)
+  const homeContent = (
     <>
       <div className="border-b border-gray-200 p-4">
         <h1 className="text-xl font-bold text-emerald-600">
@@ -50,7 +63,46 @@ function App() {
         <p className="text-xs text-gray-400">わがままグルメ</p>
       </div>
 
+      <SearchBar />
       <PresetButtons onSelect={applyPreset} />
+      <GenrePresets
+        selectedGenre={selectedGenre}
+        onGenreSelect={setSelectedGenre}
+        onPreferenceSelect={applyPreset}
+      />
+
+      {loading && (
+        <div className="p-4 text-sm text-gray-400">読み込み中...</div>
+      )}
+      {error && (
+        <div className="p-4 text-sm text-red-500">
+          データ取得エラー: {error}
+        </div>
+      )}
+      <div className="mt-auto p-4 text-xs text-gray-300">
+        表示中: {filteredStores.filter((s) => s.visible).length} /{" "}
+        {filteredStores.length} 店舗
+      </div>
+    </>
+  );
+
+  // デスクトップサイドバー内容 (スライダー含む)
+  const desktopSidebar = (
+    <>
+      <div className="border-b border-gray-200 p-4">
+        <h1 className="text-xl font-bold text-emerald-600">
+          Wagamama Gourmet
+        </h1>
+        <p className="text-xs text-gray-400">わがままグルメ</p>
+      </div>
+
+      <SearchBar />
+      <PresetButtons onSelect={applyPreset} />
+      <GenrePresets
+        selectedGenre={selectedGenre}
+        onGenreSelect={setSelectedGenre}
+        onPreferenceSelect={applyPreset}
+      />
       <SliderGroup weights={weights} onChange={updateWeight} />
 
       {loading && (
@@ -62,17 +114,17 @@ function App() {
         </div>
       )}
       <div className="mt-auto p-4 text-xs text-gray-300">
-        表示中: {storesWithScore.filter((s) => s.visible).length} /{" "}
-        {storesWithScore.length} 店舗
+        表示中: {filteredStores.filter((s) => s.visible).length} /{" "}
+        {filteredStores.length} 店舗
       </div>
     </>
   );
 
   return (
-    <div className="flex h-screen w-screen flex-col md:flex-row">
+    <div className="flex h-dvh w-screen flex-col overflow-hidden md:flex-row">
       {/* ===== デスクトップ: 左パネル (md以上で表示) ===== */}
       <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white md:flex">
-        {panelContent}
+        {desktopSidebar}
       </aside>
 
       {/* ===== コンテンツ領域 ===== */}
@@ -83,16 +135,20 @@ function App() {
             activeTab === "home" ? "z-10 visible" : "z-0 invisible"
           } md:hidden`}
         >
-          {panelContent}
+          {homeContent}
         </div>
 
-        {/* --- 地図 (常にマウント、単一インスタンス) --- */}
+        {/* --- 地図 + スライダードロワー (モバイル) --- */}
         <div
-          className={`absolute inset-0 ${
+          className={`absolute inset-0 touch-none ${
             activeTab === "map" ? "z-10 visible" : "z-0 invisible"
           } md:relative md:inset-auto md:z-auto md:visible md:h-full`}
         >
-          <MapView stores={storesWithScore} />
+          <MapView stores={filteredStores} />
+          {/* モバイル: 地図上のスライダードロワー */}
+          <div className="touch-auto md:hidden">
+            <SliderDrawer weights={weights} onChange={updateWeight} />
+          </div>
         </div>
 
         {/* --- チャットタブ (モバイルのみ) --- */}
