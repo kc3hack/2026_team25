@@ -88,6 +88,138 @@
   justify-content: center;
 }
 
+/* --- Top3 Medal Effects (Gold / Silver / Bronze) --- */
+.map-pin--gold,
+.map-pin--silver,
+.map-pin--bronze {
+  position: relative;
+  overflow: visible;
+  animation: medal-pulse 1.8s ease-in-out infinite;
+}
+
+.map-pin--gold {
+  border-color: #fff5bf;
+  box-shadow:
+    0 0 10px rgba(255, 215, 0, 0.9),
+    0 0 18px rgba(255, 231, 130, 0.8),
+    0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+.map-pin--silver {
+  border-color: #eef2f7;
+  box-shadow:
+    0 0 10px rgba(192, 192, 192, 0.9),
+    0 0 18px rgba(225, 232, 240, 0.8),
+    0 0 30px rgba(192, 192, 192, 0.45);
+}
+
+.map-pin--bronze {
+  border-color: #f7d9be;
+  box-shadow:
+    0 0 10px rgba(205, 127, 50, 0.9),
+    0 0 18px rgba(226, 154, 89, 0.8),
+    0 0 30px rgba(205, 127, 50, 0.45);
+}
+
+.map-pin--gold::after,
+.map-pin--silver::after,
+.map-pin--bronze::after {
+  content: "✦";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 10px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+  animation: twinkle 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.map-pin__crown {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  line-height: 1;
+  z-index: 20;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  animation: crown-bounce 1.5s ease-in-out infinite;
+}
+
+.map-pin__crown svg {
+  display: block;
+}
+
+.map-pin__crown--gold {
+  color: #ffd700;
+  background: rgba(38, 45, 58, 0.4);
+  border-radius: 999px;
+  padding: 1px 2px;
+  filter:
+    drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))
+    drop-shadow(0 0 3px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 6px rgba(255, 215, 0, 0.85));
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.85);
+}
+
+.map-pin__crown--silver {
+  color: #e8edf5;
+  background: rgba(38, 45, 58, 0.4);
+  border-radius: 999px;
+  padding: 1px 2px;
+  filter:
+    drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))
+    drop-shadow(0 0 3px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 6px rgba(255, 255, 255, 0.85));
+}
+
+.map-pin__crown--bronze {
+  color: #cd7f32;
+  background: rgba(38, 45, 58, 0.4);
+  border-radius: 999px;
+  padding: 1px 2px;
+  filter:
+    drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))
+    drop-shadow(0 0 3px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 6px rgba(205, 127, 50, 0.85));
+  text-shadow: 0 0 8px rgba(205, 127, 50, 0.85);
+}
+
+@keyframes medal-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.8) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25) rotate(12deg);
+  }
+}
+
+@keyframes crown-bounce {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-2px);
+  }
+}
+
 /* --- 地図コンテナ --- */
 .map-container {
   width: 100%;

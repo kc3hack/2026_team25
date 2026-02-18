@@ -18,6 +18,8 @@ interface MapViewProps {
   stores: StoreWithScore[];
 }
 
+type RankTier = 1 | 2 | 3 | null;
+
 export default function MapView({ stores }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -54,6 +56,14 @@ export default function MapView({ stores }: MapViewProps) {
   useEffect(() => {
     if (!mapRef.current) return;
 
+    const rankMap = new Map<string, RankTier>();
+    [...stores]
+      .sort((a, b) => b.normalizedScore - a.normalizedScore)
+      .slice(0, 3)
+      .forEach((store, index) => {
+        rankMap.set(store.id, (index + 1) as 1 | 2 | 3);
+      });
+
     const nextStoreIds = new Set(stores.map((store) => store.id));
 
     // 削除された店舗のマーカーを掃除
@@ -71,13 +81,15 @@ export default function MapView({ stores }: MapViewProps) {
       if (existing) {
         // 既存マーカーは再利用し、React描画のみ更新
         existing.marker.setLngLat([store.lng, store.lat]);
-        existing.root.render(<MapMarker store={store} />);
+        existing.root.render(
+          <MapMarker store={store} rank={rankMap.get(store.id) ?? null} />
+        );
         return;
       }
 
       const el = document.createElement("div");
       const root = createRoot(el);
-      root.render(<MapMarker store={store} />);
+      root.render(<MapMarker store={store} rank={rankMap.get(store.id) ?? null} />);
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([store.lng, store.lat])
