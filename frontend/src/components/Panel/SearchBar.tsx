@@ -12,7 +12,7 @@ export default function SearchBar() {
         <Search size={18} className="shrink-0 text-gray-400" />
         <input
           type="text"
-          placeholder="お店を検索..."
+          placeholder="お店やジャンルを検索..."
           disabled
           className="w-full bg-transparent text-sm text-gray-500 placeholder:text-gray-400 focus:outline-none"
         />

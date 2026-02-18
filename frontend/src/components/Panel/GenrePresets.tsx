@@ -1,85 +1,48 @@
 // ============================================
-// GenrePresets.tsx — ジャンルフィルター + 好みチップ
+// GenrePresets.tsx — ジャンルカードグリッド
 // 【B専任】このファイルは B のみが編集する
 // ============================================
-
-import type { Weights } from "../../types";
 
 interface GenrePresetsProps {
   selectedGenre: string | null;
   onGenreSelect: (genre: string | null) => void;
-  onPreferenceSelect: (weights: Weights) => void;
 }
 
-const GENRES = [
-  "すべて",
-  "ラーメン",
-  "カフェ",
-  "和食",
-  "中華",
-  "イタリアン",
-  "カレー",
-  "寿司",
-  "焼肉",
-  "居酒屋",
-] as const;
-
-const PREFERENCES: { label: string; weights: Weights }[] = [
-  {
-    label: "提供が早い",
-    weights: { price: 50, access: 50, rating: 30, vibe: 10, speed: 95 },
-  },
-  {
-    label: "がっつり",
-    weights: { price: 70, access: 50, rating: 50, vibe: 10, speed: 60 },
-  },
+const GENRE_CARDS: { genre: string; gradient: string }[] = [
+  { genre: "ラーメン", gradient: "from-red-500 to-red-600" },
+  { genre: "カフェ", gradient: "from-teal-400 to-teal-600" },
+  { genre: "和食", gradient: "from-emerald-500 to-emerald-700" },
+  { genre: "中華", gradient: "from-orange-500 to-orange-600" },
+  { genre: "イタリアン", gradient: "from-green-500 to-green-600" },
+  { genre: "カレー", gradient: "from-yellow-500 to-amber-600" },
+  { genre: "寿司", gradient: "from-sky-400 to-sky-600" },
+  { genre: "焼肉", gradient: "from-rose-500 to-rose-700" },
+  { genre: "居酒屋", gradient: "from-purple-500 to-purple-700" },
+  { genre: "飲食店", gradient: "from-slate-500 to-slate-600" },
 ];
 
 export default function GenrePresets({
   selectedGenre,
   onGenreSelect,
-  onPreferenceSelect,
 }: GenrePresetsProps) {
   return (
-    <div className="flex flex-col gap-3 px-4 py-2">
-      <h2 className="text-sm font-bold text-gray-700">ジャンル・こだわり</h2>
+    <div className="grid grid-cols-2 gap-3">
+      {GENRE_CARDS.map(({ genre, gradient }) => {
+        const isActive = selectedGenre === genre;
 
-      <div className="flex flex-wrap gap-2">
-        {GENRES.map((genre) => {
-          const isAll = genre === "すべて";
-          const isActive = isAll
-            ? selectedGenre === null
-            : selectedGenre === genre;
-
-          return (
-            <button
-              key={genre}
-              type="button"
-              onClick={() => onGenreSelect(isAll ? null : genre)}
-              className={`min-h-[36px] cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-200 ${
-                isActive
-                  ? "border-emerald-500 bg-emerald-500 text-white"
-                  : "border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:bg-emerald-50"
-              }`}
-            >
-              {genre}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {PREFERENCES.map((pref) => (
+        return (
           <button
-            key={pref.label}
+            key={genre}
             type="button"
-            onClick={() => onPreferenceSelect(pref.weights)}
-            className="min-h-[36px] cursor-pointer rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors duration-200 hover:border-amber-400 hover:bg-amber-100"
+            onClick={() => onGenreSelect(isActive ? null : genre)}
+            className={`flex h-24 cursor-pointer flex-col justify-end rounded-2xl bg-linear-to-br ${gradient} p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98] ${
+              isActive ? "ring-2 ring-white ring-offset-2" : ""
+            }`}
           >
-            {pref.label}
+            <span className="text-base font-bold text-white">{genre}</span>
           </button>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }

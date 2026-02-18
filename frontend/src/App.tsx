@@ -56,20 +56,25 @@ function App() {
   // ホームタブ内容 (モバイル用)
   const homeContent = (
     <>
-      <div className="border-b border-gray-200 p-4">
-        <h1 className="text-xl font-bold text-emerald-600">
+      <div className="p-5 pb-2">
+        <h1 className="text-2xl font-bold text-gray-900">
           Wagamama Gourmet
         </h1>
         <p className="text-xs text-gray-400">わがままグルメ</p>
       </div>
 
       <SearchBar />
-      <PresetButtons onSelect={applyPreset} />
-      <GenrePresets
-        selectedGenre={selectedGenre}
-        onGenreSelect={setSelectedGenre}
-        onPreferenceSelect={applyPreset}
-      />
+
+      <div className="flex flex-col gap-4 px-4 py-3">
+        <h2 className="text-lg font-bold text-gray-900">モードで探す</h2>
+        <PresetButtons onSelect={applyPreset} />
+
+        <h2 className="text-lg font-bold text-gray-900">ジャンルから探す</h2>
+        <GenrePresets
+          selectedGenre={selectedGenre}
+          onGenreSelect={setSelectedGenre}
+        />
+      </div>
 
       {loading && (
         <div className="p-4 text-sm text-gray-400">読み込み中...</div>
@@ -89,20 +94,26 @@ function App() {
   // デスクトップサイドバー内容 (スライダー含む)
   const desktopSidebar = (
     <>
-      <div className="border-b border-gray-200 p-4">
-        <h1 className="text-xl font-bold text-emerald-600">
+      <div className="p-5 pb-2">
+        <h1 className="text-2xl font-bold text-gray-900">
           Wagamama Gourmet
         </h1>
         <p className="text-xs text-gray-400">わがままグルメ</p>
       </div>
 
       <SearchBar />
-      <PresetButtons onSelect={applyPreset} />
-      <GenrePresets
-        selectedGenre={selectedGenre}
-        onGenreSelect={setSelectedGenre}
-        onPreferenceSelect={applyPreset}
-      />
+
+      <div className="flex flex-col gap-4 px-4 py-3">
+        <h2 className="text-lg font-bold text-gray-900">モードで探す</h2>
+        <PresetButtons onSelect={applyPreset} />
+
+        <h2 className="text-lg font-bold text-gray-900">ジャンルから探す</h2>
+        <GenrePresets
+          selectedGenre={selectedGenre}
+          onGenreSelect={setSelectedGenre}
+        />
+      </div>
+
       <SliderGroup weights={weights} onChange={updateWeight} />
 
       {loading && (

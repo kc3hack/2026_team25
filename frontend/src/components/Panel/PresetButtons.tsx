@@ -1,5 +1,5 @@
 // ============================================
-// PresetButtons.tsx — プリセット切替ボタン
+// PresetButtons.tsx — モードプリセットカード
 // 【B専任】このファイルは B のみが編集する
 // ============================================
 
@@ -10,28 +10,30 @@ interface PresetButtonsProps {
   onSelect: (weights: Weights) => void;
 }
 
-const PRESET_STYLES: Record<string, string> = {
-  "金欠モード": "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
-  "デートモード": "bg-pink-500 hover:bg-pink-600 active:bg-pink-700",
-  "急ぎモード": "bg-amber-500 hover:bg-amber-600 active:bg-amber-700",
-};
+const PRESET_CARDS: { name: string; gradient: string }[] = [
+  { name: "金欠モード", gradient: "from-blue-500 to-blue-600" },
+  { name: "デートモード", gradient: "from-pink-400 to-rose-500" },
+  { name: "急ぎモード", gradient: "from-amber-400 to-orange-500" },
+];
 
 export default function PresetButtons({ onSelect }: PresetButtonsProps) {
   return (
-    <div className="flex flex-col gap-2 p-4">
-      <h2 className="text-lg font-bold">プリセット</h2>
-      <div className="flex gap-2">
-        {Object.entries(PRESETS).map(([name, weights]) => (
+    <div className="grid grid-cols-2 gap-3">
+      {PRESET_CARDS.map(({ name, gradient }) => {
+        const weights = PRESETS[name];
+        if (!weights) return null;
+
+        return (
           <button
             key={name}
             type="button"
             onClick={() => onSelect(weights)}
-            className={`min-h-[44px] flex-1 cursor-pointer rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:shadow-md ${PRESET_STYLES[name] ?? "bg-gray-500 hover:bg-gray-600"}`}
+            className={`flex h-24 cursor-pointer flex-col justify-end rounded-2xl bg-linear-to-br ${gradient} p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98]`}
           >
-            {name}
+            <span className="text-base font-bold text-white">{name}</span>
           </button>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
