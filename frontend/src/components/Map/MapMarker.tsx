@@ -4,9 +4,10 @@ import type { StoreWithScore } from "../../types";
 
 interface MapMarkerProps {
   store: StoreWithScore;
+  rank?: 1 | 2 | 3 | null;
 }
 
-export function MapMarker({ store }: MapMarkerProps) {
+export function MapMarker({ store, rank = null }: MapMarkerProps) {
   const controls = useAnimation();
   const prevScoreRef = useRef(store.normalizedScore);
 
@@ -33,6 +34,22 @@ export function MapMarker({ store }: MapMarkerProps) {
   }, [store.normalizedScore, controls]);
 
   const isRecommended = store.normalizedScore > 0.7;
+  const medalClass =
+    rank === 1
+      ? "map-pin--gold"
+      : rank === 2
+        ? "map-pin--silver"
+        : rank === 3
+          ? "map-pin--bronze"
+          : "";
+  const crownClass =
+    rank === 1
+      ? "map-pin__crown--gold"
+      : rank === 2
+        ? "map-pin__crown--silver"
+        : rank === 3
+          ? "map-pin__crown--bronze"
+          : "";
   // 視覚的インパクトを少しだけ強めるため、表示サイズを 5px〜45px に拡張
   const size = 5 + store.normalizedScore * 40;
 
@@ -58,7 +75,7 @@ export function MapMarker({ store }: MapMarkerProps) {
     <motion.div
       className={`map-pin ${store.visible ? "map-pin--visible" : "map-pin--hidden"} ${
         isRecommended ? "map-pin--recommended" : "map-pin--common"
-      }`}
+      } ${medalClass}`}
       style={{
         width: `${size}px`,
         height: `${size}px`,
@@ -70,6 +87,14 @@ export function MapMarker({ store }: MapMarkerProps) {
       animate={controls}
       initial={{ scale: 1 }}
     >
+      {rank && (
+        <div className={`map-pin__crown ${crownClass}`} aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+            <path d="M5 17h14l1-10-4.5 3.5L12 4 8.5 10.5 4 7l1 10zm0 2a1 1 0 0 0 0 2h14a1 1 0 1 0 0-2H5z" />
+          </svg>
+        </div>
+      )}
+
       {isRecommended && (
         <div className="map-pin__icon">
           <svg
