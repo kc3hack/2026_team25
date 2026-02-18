@@ -14,9 +14,10 @@ const DEFAULT_ZOOM = 15;
 
 interface MapViewProps {
   stores: StoreWithScore[];
+  onStoreSelect?: (store: StoreWithScore) => void;
 }
 
-export default function MapView({ stores }: MapViewProps) {
+export default function MapView({ stores, onStoreSelect }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -53,13 +54,10 @@ export default function MapView({ stores }: MapViewProps) {
       el.style.height = `${store.pinSize}px`;
       el.style.backgroundColor = store.pinColor;
 
+      el.addEventListener("click", () => onStoreSelect?.(store));
+
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([store.lng, store.lat])
-        .setPopup(
-          new maplibregl.Popup({ offset: 15 }).setHTML(
-            `<strong>${store.name}</strong><br/>${store.genre}`
-          )
-        )
         .addTo(mapRef.current!);
 
       markersRef.current.push(marker);

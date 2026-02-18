@@ -3,7 +3,7 @@
 // 【B専任】このファイルは B のみが編集する
 // ============================================
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { MapView } from "./components/map";
 import {
   SliderGroup,
@@ -13,12 +13,13 @@ import {
   SearchBar,
   GenrePresets,
   SliderDrawer,
+  StoreCard,
 } from "./components/Panel";
 import type { Tab } from "./components/Panel";
 import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
 import { fetchStores } from "./lib/api";
-import type { Store } from "./types";
+import type { Store, StoreWithScore, Weights } from "./types";
 
 function App() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -26,6 +27,9 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("map");
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [selectedStore, setSelectedStore] = useState<StoreWithScore | null>(
+    null
+  );
   const { weights, updateWeight, applyPreset } = useWeights();
 
   // 初回: APIから店舗データ取得
@@ -53,6 +57,15 @@ function App() {
     [storesWithScore, selectedGenre]
   );
 
+  // プリセット選択 → スライダー変更 + 地図タブへ移動
+  const handlePresetSelect = useCallback(
+    (preset: Weights) => {
+      applyPreset(preset);
+      setActiveTab("map");
+    },
+    [applyPreset]
+  );
+
   // ホームタブ内容 (モバイル用)
   const homeContent = (
     <>
@@ -60,7 +73,7 @@ function App() {
 
       <div className="flex flex-col gap-4 px-4 py-3">
         <h2 className="text-lg font-bold text-gray-900">モードで探す</h2>
-        <PresetButtons onSelect={applyPreset} />
+        <PresetButtons onSelect={handlePresetSelect} />
 
         <h2 className="text-lg font-bold text-gray-900">ジャンルから探す</h2>
         <GenrePresets
@@ -99,7 +112,7 @@ function App() {
 
       <div className="flex flex-col gap-4 px-4 py-3">
         <h2 className="text-lg font-bold text-gray-900">モードで探す</h2>
-        <PresetButtons onSelect={applyPreset} />
+        <PresetButtons onSelect={handlePresetSelect} />
 
         <h2 className="text-lg font-bold text-gray-900">ジャンルから探す</h2>
         <GenrePresets
@@ -109,6 +122,16 @@ function App() {
       </div>
 
       <SliderGroup weights={weights} onChange={updateWeight} />
+
+      {/* デスクトップ: 選択中の店舗カード */}
+      {selectedStore && (
+        <div className="border-t border-gray-200 p-4">
+          <StoreCard
+            store={selectedStore}
+            onClose={() => setSelectedStore(null)}
+          />
+        </div>
+      )}
 
       {loading && (
         <div className="p-4 text-sm text-gray-400">読み込み中...</div>
@@ -158,7 +181,21 @@ function App() {
             activeTab === "map" ? "z-10 visible" : "z-0 invisible"
           } md:relative md:inset-auto md:z-auto md:visible md:h-full`}
         >
-          <MapView stores={filteredStores} />
+          <MapView
+            stores={filteredStores}
+            onStoreSelect={setSelectedStore}
+          />
+
+          {/* モバイル: 選択中の店舗カード (地図上オーバーレイ) */}
+          {selectedStore && (
+            <div className="absolute inset-x-4 bottom-14 z-30 touch-auto md:hidden">
+              <StoreCard
+                store={selectedStore}
+                onClose={() => setSelectedStore(null)}
+              />
+            </div>
+          )}
+
           {/* モバイル: 地図上のスライダードロワー */}
           <div className="touch-auto md:hidden">
             <SliderDrawer weights={weights} onChange={updateWeight} />

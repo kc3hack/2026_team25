@@ -10,4 +10,5 @@ export { default as ChatPlaceholder } from "./ChatPlaceholder";
 export { default as SearchBar } from "./SearchBar";
 export { default as GenrePresets } from "./GenrePresets";
 export { default as SliderDrawer } from "./SliderDrawer";
+export { default as RadarChart } from "./RadarChart";
 export type { Tab } from "./BottomNav";
