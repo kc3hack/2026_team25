@@ -4,7 +4,7 @@
 // ============================================
 
 import { useEffect, useState, useMemo } from "react";
-import { MapView } from "./components/Map";
+import { MapView } from "./components/map";
 import {
   SliderGroup,
   PresetButtons,
@@ -74,9 +74,8 @@ function App() {
             <button
               key={store.id}
               onClick={() => setSelectedStore(store)}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-gray-100 ${
-                selectedStore?.id === store.id ? "bg-gray-100" : ""
-              }`}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-gray-100 ${selectedStore?.id === store.id ? "bg-gray-100" : ""
+                }`}
             >
               <span className="w-5 shrink-0 text-center text-xs font-bold text-gray-400">
                 {i + 1}
@@ -198,18 +197,16 @@ function App() {
       <div className="relative flex-1 overflow-hidden">
         {/* --- ホームタブ (モバイルのみ) --- */}
         <div
-          className={`absolute inset-0 overflow-y-auto bg-white ${
-            activeTab === "home" ? "z-10 visible" : "z-0 invisible"
-          } md:hidden`}
+          className={`absolute inset-0 overflow-y-auto bg-white ${activeTab === "home" ? "z-10 visible" : "z-0 invisible"
+            } md:hidden`}
         >
           {homeContent}
         </div>
 
         {/* --- 地図 + スライダードロワー (モバイル) --- */}
         <div
-          className={`absolute inset-0 touch-none ${
-            activeTab === "map" ? "z-10 visible" : "z-0 invisible"
-          } md:relative md:inset-auto md:z-auto md:visible md:h-full`}
+          className={`absolute inset-0 touch-none ${activeTab === "map" ? "z-10 visible" : "z-0 invisible"
+            } md:relative md:inset-auto md:z-auto md:visible md:h-full`}
         >
           <MapView stores={filteredStores} />
           {/* モバイル: 地図上のスライダードロワー */}
@@ -220,9 +217,8 @@ function App() {
 
         {/* --- チャットタブ (モバイルのみ) --- */}
         <div
-          className={`absolute inset-0 ${
-            activeTab === "chat" ? "z-10 visible" : "z-0 invisible"
-          } md:hidden`}
+          className={`absolute inset-0 ${activeTab === "chat" ? "z-10 visible" : "z-0 invisible"
+            } md:hidden`}
         >
           <ChatPlaceholder />
         </div>
