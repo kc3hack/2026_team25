@@ -69,7 +69,7 @@ function App() {
   );
 
   return (
-    <div className="flex h-screen w-screen flex-col md:flex-row">
+    <div className="flex h-dvh w-screen flex-col overflow-hidden md:flex-row">
       {/* ===== デスクトップ: 左パネル (md以上で表示) ===== */}
       <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white md:flex">
         {panelContent}
@@ -88,7 +88,7 @@ function App() {
 
         {/* --- 地図 (常にマウント、単一インスタンス) --- */}
         <div
-          className={`absolute inset-0 ${
+          className={`absolute inset-0 touch-none ${
             activeTab === "map" ? "z-10 visible" : "z-0 invisible"
           } md:relative md:inset-auto md:z-auto md:visible md:h-full`}
         >
