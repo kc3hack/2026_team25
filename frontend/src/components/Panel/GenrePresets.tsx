@@ -35,11 +35,23 @@ export default function GenrePresets({
             key={genre}
             type="button"
             onClick={() => onGenreSelect(isActive ? null : genre)}
-            className={`flex h-24 cursor-pointer flex-col justify-end rounded-2xl bg-linear-to-br ${gradient} p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98] ${
-              isActive ? "ring-2 ring-white ring-offset-2" : ""
+            className={`relative flex h-24 cursor-pointer flex-col justify-end rounded-2xl bg-linear-to-br ${gradient} p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98] ${
+              isActive
+                ? "ring-4 ring-emerald-300 ring-offset-2 shadow-[0_0_24px_rgba(52,211,153,0.65)]"
+                : ""
             }`}
+            aria-pressed={isActive}
+            title={isActive ? "選択中（再タップで解除）" : "タップで選択"}
           >
+            {isActive && (
+              <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                選択中
+              </span>
+            )}
             <span className="text-base font-bold text-white">{genre}</span>
+            {isActive && (
+              <span className="mt-1 text-[11px] text-white/90">もう一度タップで解除</span>
+            )}
           </button>
         );
       })}

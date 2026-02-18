@@ -181,7 +181,9 @@ class TestScoreApi:
         )
 
         assert response.status_code == 400
-        assert response.json()["detail"] == stores_router.ERROR_EMPTY_STORE_IDS
+        payload = response.json()
+        assert payload["error"]["code"] == "EMPTY_STORE_IDS"
+        assert payload["error"]["message"] == stores_router.ERROR_EMPTY_STORE_IDS
 
     def test_post_score_preserves_request_order(self, monkeypatch):
         client = TestClient(app)
@@ -224,6 +226,98 @@ class TestScoreApi:
         assert response.status_code == 200
         ids = [item["store_id"] for item in response.json()["scores"]]
         assert ids == request_order
+
+    def test_post_score_with_min_score_filters_results(self, monkeypatch):
+        client = TestClient(app)
+
+        fake_data = [
+            {
+                "id": "store_001",
+                "price_score": 0.9,
+                "access_score": 0.8,
+                "rating_score": 0.7,
+                "vibe_score": 0.3,
+                "speed_score": 0.9,
+            },
+            {
+                "id": "store_002",
+                "price_score": 0.1,
+                "access_score": 0.1,
+                "rating_score": 0.2,
+                "vibe_score": 0.2,
+                "speed_score": 0.1,
+            },
+        ]
+        monkeypatch.setattr(stores_router, "supabase", _FakeSupabase(data=fake_data))
+
+        response = client.post(
+            "/api/stores/score?min_score=0.8",
+            json={
+                "store_ids": ["store_001", "store_002"],
+                "weights": {
+                    "price": 90,
+                    "access": 70,
+                    "rating": 30,
+                    "vibe": 10,
+                    "speed": 50,
+                },
+            },
+        )
+
+        assert response.status_code == 200
+        scores = response.json()["scores"]
+        assert len(scores) == 1
+        assert scores[0]["store_id"] == "store_001"
+
+    def test_post_score_with_limit_returns_top_n(self, monkeypatch):
+        client = TestClient(app)
+
+        fake_data = [
+            {
+                "id": "store_001",
+                "price_score": 0.9,
+                "access_score": 0.8,
+                "rating_score": 0.7,
+                "vibe_score": 0.3,
+                "speed_score": 0.9,
+            },
+            {
+                "id": "store_002",
+                "price_score": 0.2,
+                "access_score": 0.1,
+                "rating_score": 0.2,
+                "vibe_score": 0.2,
+                "speed_score": 0.1,
+            },
+            {
+                "id": "store_003",
+                "price_score": 0.95,
+                "access_score": 0.85,
+                "rating_score": 0.5,
+                "vibe_score": 0.15,
+                "speed_score": 0.95,
+            },
+        ]
+        monkeypatch.setattr(stores_router, "supabase", _FakeSupabase(data=fake_data))
+
+        response = client.post(
+            "/api/stores/score?limit=2",
+            json={
+                "store_ids": ["store_001", "store_002", "store_003"],
+                "weights": {
+                    "price": 90,
+                    "access": 70,
+                    "rating": 30,
+                    "vibe": 10,
+                    "speed": 50,
+                },
+            },
+        )
+
+        assert response.status_code == 200
+        scores = response.json()["scores"]
+        assert len(scores) == 2
+        assert scores[0]["normalized_score"] >= scores[1]["normalized_score"]
 
     def test_post_score_falls_back_to_seed_when_db_fails(self, monkeypatch):
         client = TestClient(app)
@@ -314,4 +408,6 @@ class TestScoreApi:
         response = client.get("/api/stores")
 
         assert response.status_code == 503
-        assert response.json()["detail"] == stores_router.ERROR_DB_AND_FALLBACK_UNAVAILABLE
+        payload = response.json()
+        assert payload["error"]["code"] == "DB_UNAVAILABLE"
+        assert payload["error"]["message"] == stores_router.ERROR_DB_AND_FALLBACK_UNAVAILABLE
