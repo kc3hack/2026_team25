@@ -56,13 +56,6 @@ function App() {
   // ホームタブ内容 (モバイル用)
   const homeContent = (
     <>
-      <div className="p-5 pb-2">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Wagamama Gourmet
-        </h1>
-        <p className="text-xs text-gray-400">わがままグルメ</p>
-      </div>
-
       <SearchBar />
 
       <div className="flex flex-col gap-4 px-4 py-3">
@@ -94,12 +87,13 @@ function App() {
   // デスクトップサイドバー内容 (スライダー含む)
   const desktopSidebar = (
     <>
-      <div className="p-5 pb-2">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Wagamama Gourmet
-        </h1>
-        <p className="text-xs text-gray-400">わがままグルメ</p>
-      </div>
+      <button
+        type="button"
+        onClick={() => setActiveTab("home")}
+        className="cursor-pointer border-b border-gray-200 p-4"
+      >
+        <img src="/logo.png" alt="Wagamama Gourmet" className="h-10" />
+      </button>
 
       <SearchBar />
 
@@ -137,6 +131,15 @@ function App() {
       <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white md:flex">
         {desktopSidebar}
       </aside>
+
+      {/* ===== モバイル: ロゴヘッダー (全タブ共通) ===== */}
+      <button
+        type="button"
+        onClick={() => setActiveTab("home")}
+        className="cursor-pointer border-b border-gray-200 bg-white px-4 py-3 md:hidden"
+      >
+        <img src="/logo.png" alt="Wagamama Gourmet" className="h-8" />
+      </button>
 
       {/* ===== コンテンツ領域 ===== */}
       <div className="relative flex-1 overflow-hidden">
