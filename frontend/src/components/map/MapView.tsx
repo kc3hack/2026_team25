@@ -13,6 +13,7 @@ import "../../styles/map.css";
 /** KRP（京都リサーチパーク）の座標 */
 const KRP_CENTER = { lng: 135.7467, lat: 34.9937 };
 const DEFAULT_ZOOM = 15;
+const MAP_STYLE_URL = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
 
 interface MapViewProps {
   stores: StoreWithScore[];
@@ -35,7 +36,7 @@ export default function MapView({ stores }: MapViewProps) {
 
     mapRef.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+      style: MAP_STYLE_URL,
       center: [KRP_CENTER.lng, KRP_CENTER.lat],
       zoom: DEFAULT_ZOOM,
     });

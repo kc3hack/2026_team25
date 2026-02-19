@@ -64,6 +64,9 @@ const CHART_SIZE = 160;
 const CENTER = CHART_SIZE / 2;
 const MAX_R = CHART_SIZE / 2 - 24;
 const GRID_STEPS = [0.25, 0.5, 0.75, 1.0];
+const SVG_PAD = 28;
+const SVG_VIEWBOX_MIN = -SVG_PAD;
+const SVG_VIEWBOX_SIZE = CHART_SIZE + SVG_PAD * 2;
 
 export default function StoreCard({ store, onClose }: StoreCardProps) {
   if (!store) return null;
@@ -99,7 +102,11 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
 
       {/* --- レーダーチャート（五角形） --- */}
       <div className="mt-3 flex justify-center">
-        <svg width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`}>
+        <svg
+          width={CHART_SIZE}
+          height={CHART_SIZE}
+          viewBox={`${SVG_VIEWBOX_MIN} ${SVG_VIEWBOX_MIN} ${SVG_VIEWBOX_SIZE} ${SVG_VIEWBOX_SIZE}`}
+        >
           {/* グリッド線 */}
           {GRID_STEPS.map((step) => (
             <polygon
@@ -145,13 +152,15 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
 
           {/* ラベル */}
           {SCORE_KEYS.map((key, i) => {
-            const p = polarToXY(CENTER, CENTER, MAX_R + 16, i);
+            const p = polarToXY(CENTER, CENTER, MAX_R + 18, i);
+            const textAnchor =
+              p.x < CENTER - 18 ? "end" : p.x > CENTER + 18 ? "start" : "middle";
             return (
               <text
                 key={key}
                 x={p.x}
                 y={p.y}
-                textAnchor="middle"
+                textAnchor={textAnchor}
                 dominantBaseline="central"
                 className="fill-gray-600 text-[10px] font-bold"
               >
