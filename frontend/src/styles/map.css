@@ -6,7 +6,7 @@
 /* --- ピンの基本スタイル --- */
 .map-pin {
   border-radius: 50%;
-  border: 2px solid white;
+  border: 2px solid rgba(255, 255, 255, 0.7);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   transition:
@@ -38,7 +38,7 @@
 /* --- Common Pin Style (score <= 0.7) --- */
 .map-pin--common {
   background: hsl(calc(var(--score, 0) * 120), 65%, 50%);
-  border-color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 /* --- Recommended Pin Style (score > 0.7) --- */

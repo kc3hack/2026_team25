@@ -19,7 +19,7 @@ export default function SliderDrawer({ weights, onChange }: SliderDrawerProps) {
   return (
     <div className="absolute inset-x-0 bottom-0 z-20">
       <div
-        className={`transform rounded-t-2xl bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-in-out ${
+        className={`transform rounded-t-2xl bg-dark-surface shadow-[0_-4px_20px_rgba(0,0,0,0.4)] border-t border-border-subtle transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-y-0" : "translate-y-[calc(100%-48px)]"
         }`}
       >
@@ -31,14 +31,14 @@ export default function SliderDrawer({ weights, onChange }: SliderDrawerProps) {
           aria-label={isOpen ? "スライダーを閉じる" : "スライダーを開く"}
           aria-expanded={isOpen}
         >
-          <div className="h-1 w-10 rounded-full bg-gray-300" />
-          <span className="text-sm font-semibold text-gray-600">
+          <div className="h-1 w-10 rounded-full bg-lime-accent/40" />
+          <span className="text-sm font-semibold text-text-primary">
             こだわりスライダー
           </span>
           {isOpen ? (
-            <ChevronDown size={18} className="text-gray-500" />
+            <ChevronDown size={18} className="text-text-muted" />
           ) : (
-            <ChevronUp size={18} className="text-gray-500" />
+            <ChevronUp size={18} className="text-text-muted" />
           )}
         </button>
 

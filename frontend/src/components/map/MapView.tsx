@@ -35,7 +35,7 @@ export default function MapView({ stores }: MapViewProps) {
 
     mapRef.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+      style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
       center: [KRP_CENTER.lng, KRP_CENTER.lat],
       zoom: DEFAULT_ZOOM,
     });

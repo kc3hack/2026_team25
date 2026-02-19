@@ -1,6 +1,31 @@
 @import "tailwindcss";
 @import "maplibre-gl/dist/maplibre-gl.css";
 
+/* ============================================
+ * Tailwind v4 Theme — Dark Design System
+ * Inspired by nob-sakuma.com
+ * ============================================ */
+@theme {
+  --color-dark-base: #2B3240;
+  --color-dark-surface: #323B4B;
+  --color-dark-elevated: #3A4456;
+  --color-dark-hover: #424D60;
+
+  --color-lime-accent: #C2F542;
+  --color-lime-muted: #C2F54226;
+  --color-lime-border: #C2F5424D;
+
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+
+  --color-border-subtle: #FFFFFF14;
+  --color-border-default: #FFFFFF1A;
+  --color-border-accent: #C2F5424D;
+
+  --font-mono-score: "Share Tech Mono", "Monaco", "Consolas", monospace;
+}
+
 html,
 body,
 #root {
@@ -8,17 +33,19 @@ body,
   margin: 0;
   padding: 0;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  background-color: #2B3240;
+  color: #FFFFFF;
 }
 
-/* カスタムスライダー — つまみ: 白 + シャドウ */
+/* Custom slider — lime green thumb with glow */
 .slider-custom::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  background: #C2F542;
+  box-shadow: 0 0 8px rgba(194, 245, 66, 0.5);
   cursor: pointer;
 }
 
@@ -27,7 +54,21 @@ body,
   height: 20px;
   border: none;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  background: #C2F542;
+  box-shadow: 0 0 8px rgba(194, 245, 66, 0.5);
   cursor: pointer;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(50, 59, 75, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

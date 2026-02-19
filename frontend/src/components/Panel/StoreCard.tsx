@@ -71,16 +71,16 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
   const values = SCORE_KEYS.map((k) => store[k]);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
+    <div className="rounded-xl border border-border-default bg-dark-surface p-4 shadow-lg">
       <div className="flex items-start justify-between">
         <div>
           <h3 className="text-lg font-bold">{store.name}</h3>
-          <p className="text-sm text-gray-500">{store.genre}</p>
+          <p className="text-sm text-text-secondary">{store.genre}</p>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="text-gray-400 transition-colors hover:text-gray-600"
+            className="text-text-muted transition-colors hover:text-text-primary"
           >
             x
           </button>
@@ -89,7 +89,7 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
 
       <div className="mt-2 text-sm">
         <span className="font-medium">総合スコア: </span>
-        <span style={{ color: store.pinColor }} className="text-lg font-bold">
+        <span style={{ color: store.pinColor }} className="font-mono-score text-lg font-bold">
           {(store.normalizedScore * 100).toFixed(0)}pt
         </span>
       </div>
@@ -103,7 +103,7 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
               key={step}
               points={buildPolygonPoints(CENTER, CENTER, MAX_R * step)}
               fill="none"
-              stroke="#e5e7eb"
+              stroke="rgba(255, 255, 255, 0.1)"
               strokeWidth={1}
             />
           ))}
@@ -118,7 +118,7 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
                 y1={CENTER}
                 x2={p.x}
                 y2={p.y}
-                stroke="#e5e7eb"
+                stroke="rgba(255, 255, 255, 0.1)"
                 strokeWidth={1}
               />
             );
@@ -127,8 +127,8 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
           {/* データ領域 */}
           <polygon
             points={buildDataPoints(CENTER, CENTER, MAX_R, values)}
-            fill="rgba(16, 185, 129, 0.2)"
-            stroke="#10b981"
+            fill="rgba(194, 245, 66, 0.2)"
+            stroke="#C2F542"
             strokeWidth={2}
           />
 
@@ -136,7 +136,7 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
           {values.map((v, i) => {
             const p = polarToXY(CENTER, CENTER, MAX_R * v, i);
             return (
-              <circle key={i} cx={p.x} cy={p.y} r={3} fill="#10b981" />
+              <circle key={i} cx={p.x} cy={p.y} r={3} fill="#C2F542" />
             );
           })}
 
@@ -150,7 +150,8 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
                 y={p.y}
                 textAnchor="middle"
                 dominantBaseline="central"
-                className="fill-gray-500 text-[10px]"
+                className="text-[10px]"
+                fill="#94A3B8"
               >
                 {WEIGHT_LABELS[SCORE_TO_LABEL[key]]}
               </text>

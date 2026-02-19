@@ -34,7 +34,7 @@ export default function SliderGroup({ weights, onChange }: SliderGroupProps) {
         <div key={key} className="flex flex-col gap-2">
           <label className="grid grid-cols-[1fr_auto_1fr] items-center text-sm font-medium">
             <span className="text-center">{DISPLAY_LABELS[key]}</span>
-            <span className="min-w-10 text-center tabular-nums text-gray-500">
+            <span className="min-w-10 text-center font-mono-score tabular-nums text-text-secondary">
               {weights[key]}
             </span>
             <span />
@@ -47,10 +47,10 @@ export default function SliderGroup({ weights, onChange }: SliderGroupProps) {
             onChange={(e) => onChange(key, Number(e.target.value))}
             className="slider-custom h-[5px] w-full cursor-pointer appearance-none rounded-full"
             style={{
-              background: `linear-gradient(to right, #34d399 ${weights[key]}%, #e5e7eb ${weights[key]}%)`,
+              background: `linear-gradient(to right, #C2F542 ${weights[key]}%, #3A4456 ${weights[key]}%)`,
             }}
           />
-          <div className="grid grid-cols-2 text-xs text-gray-400">
+          <div className="grid grid-cols-2 text-xs text-text-muted">
             <span className="text-left">{DIRECTION_LABELS[key].left}</span>
             <span className="text-right">{DIRECTION_LABELS[key].right}</span>
           </div>
