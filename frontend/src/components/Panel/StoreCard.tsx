@@ -3,8 +3,14 @@
 // 【B専任】このファイルは B のみが編集する
 // ============================================
 
-import type { StoreWithScore } from "../../types";
+import { useState } from "react";
 import { WEIGHT_LABELS } from "../../types";
+import type { StoreWithScore } from "../../types";
+import {
+  TRAVEL_MODE_OPTIONS,
+  type TravelMode,
+  openDirectionsInGoogleMaps,
+} from "../../lib/navigation";
 
 interface StoreCardProps {
   store: StoreWithScore | null;
@@ -76,10 +82,25 @@ export default function StoreCard({
   onToggleFavorite,
   onClose,
 }: StoreCardProps) {
+  const [travelMode, setTravelMode] = useState<TravelMode>("walking");
+  const [isNavigating, setIsNavigating] = useState(false);
+  const handleNavigate = async () => {
+    if (!store || isNavigating) return;
+    setIsNavigating(true);
+    try {
+      await openDirectionsInGoogleMaps({
+        destination: { lat: store.lat, lng: store.lng },
+        mode: travelMode,
+      });
+    } finally {
+      setIsNavigating(false);
+    }
+  };
+
   if (!store) return null;
 
   const values = SCORE_KEYS.map((k) => store[k]);
-  const googleMapsDirectionUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}&travelmode=walking`;
+  const travelModeSelectId = `travel-mode-${store.id}`;
 
   return (
     <div className="rounded-2xl border-2 border-black bg-[#FDFBF7] p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -120,12 +141,31 @@ export default function StoreCard({
         </span>
       </div>
 
+      <div className="mt-3 grid gap-1">
+        <label htmlFor={travelModeSelectId} className="text-xs font-bold text-slate-600">
+          移動手段
+        </label>
+        <select
+          id={travelModeSelectId}
+          value={travelMode}
+          onChange={(event) => setTravelMode(event.target.value as TravelMode)}
+          className="w-full rounded-lg border-2 border-black bg-white px-3 py-2 text-sm font-semibold text-black"
+        >
+          {TRAVEL_MODE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <button
         type="button"
-        onClick={() => window.open(googleMapsDirectionUrl, "_blank", "noopener,noreferrer")}
+        onClick={handleNavigate}
+        disabled={isNavigating}
         className="mt-3 w-full rounded-xl border-2 border-black bg-[#FF6B35] px-3 py-2 text-sm font-black text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
       >
-        ここにいく
+        {isNavigating ? "道案内を準備中..." : "現在地から道案内"}
       </button>
 
       {/* --- レーダーチャート（五角形） --- */}

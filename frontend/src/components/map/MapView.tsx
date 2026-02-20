@@ -8,6 +8,11 @@ import { createRoot, type Root } from "react-dom/client";
 import maplibregl from "maplibre-gl";
 import type { StoreWithScore } from "../../types";
 import { MapMarker } from "./MapMarker";
+import {
+  TRAVEL_MODE_OPTIONS,
+  isTravelMode,
+  openDirectionsInGoogleMaps,
+} from "../../lib/navigation";
 import "../../styles/map.css";
 
 /** KRP（京都リサーチパーク）の座標 */
@@ -86,12 +91,31 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
     const button = popupEl?.querySelector<HTMLButtonElement>(`button[data-nav-store-id="${store.id}"]`);
     if (!button) return;
 
-    button.onclick = (event) => {
+    const modeSelect = popupEl?.querySelector<HTMLSelectElement>(
+      `select[data-nav-mode-store-id="${store.id}"]`
+    );
+
+    button.onclick = async (event) => {
       event.preventDefault();
       event.stopPropagation();
 
-      const directionUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}&travelmode=walking`;
-      window.open(directionUrl, "_blank", "noopener,noreferrer");
+      if (button.disabled) return;
+
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "準備中...";
+
+      try {
+        const modeValue = modeSelect?.value ?? "walking";
+        const mode = isTravelMode(modeValue) ? modeValue : "walking";
+        await openDirectionsInGoogleMaps({
+          destination: { lat: store.lat, lng: store.lng },
+          mode,
+        });
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
     };
   }, []);
 
@@ -100,6 +124,10 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
     store: StoreWithScore,
     favorite: boolean
   ) => {
+    const travelModeOptions = TRAVEL_MODE_OPTIONS.map(
+      (option) => `<option value="${option.value}">${option.label}</option>`
+    ).join("");
+
     popup.setHTML(
       `
         <div style="display:flex;align-items:center;gap:8px;">
@@ -113,11 +141,23 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
           </button>
         </div>
         <div>${escapeHtml(store.genre)}</div>
+        <div style="margin-top:8px;">
+          <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">
+            移動手段
+          </label>
+          <select
+            data-nav-mode-store-id="${store.id}"
+            aria-label="移動手段"
+            style="width:100%;border:1.5px solid #111;border-radius:8px;background:#fff;padding:6px 8px;font-weight:600;"
+          >
+            ${travelModeOptions}
+          </select>
+        </div>
         <button
           data-nav-store-id="${store.id}"
           style="margin-top:8px;border:1.5px solid #111;border-radius:10px;background:#ff6b35;color:#fff;padding:6px 10px;cursor:pointer;font-weight:800;"
         >
-          ここにいく
+          現在地から道案内
         </button>
       `
     );
