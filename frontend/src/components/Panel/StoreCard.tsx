@@ -91,7 +91,7 @@ export default function StoreCard({
               <button
                 onClick={onToggleFavorite}
                 aria-label={isFavorite ? "お気に入り解除" : "お気に入り登録"}
-                className="shrink-0 rounded-full border-2 border-black bg-white px-2 py-0.5 text-base leading-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
+                className="inline-flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full border-2 border-black bg-white px-2 py-0.5 text-base leading-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
               >
                 {isFavorite ? "★" : "☆"}
               </button>
@@ -102,9 +102,10 @@ export default function StoreCard({
         {onClose && (
           <button
             onClick={onClose}
-            className="rounded-full border-2 border-black bg-white px-2 text-sm font-black text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
+            aria-label="店舗詳細を閉じる"
+            className="inline-flex h-11 min-w-11 items-center justify-center rounded-full border-2 border-black bg-white px-2 text-sm font-black text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
           >
-            x
+            ×
           </button>
         )}
       </div>

@@ -30,8 +30,9 @@ export default function PresetButtons({ onSelect, onReset }: PresetButtonsProps)
         <p className="text-xs font-bold tracking-wide text-slate-500">モード選択</p>
         {onReset && (
           <button
+            type="button"
             onClick={onReset}
-            className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100"
+            className="inline-flex min-h-11 items-center rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100"
           >
             リセット
           </button>

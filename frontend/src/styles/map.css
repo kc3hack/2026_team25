@@ -220,6 +220,26 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .map-pin,
+  .map-pin:hover,
+  .map-pin--gold,
+  .map-pin--silver,
+  .map-pin--bronze,
+  .map-pin__crown {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .map-pin--recommended::before,
+  .map-pin--gold::after,
+  .map-pin--silver::after,
+  .map-pin--bronze::after {
+    animation: none !important;
+  }
+}
+
 /* --- 地図コンテナ --- */
 .map-container {
   width: 100%;
