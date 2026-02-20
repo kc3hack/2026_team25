@@ -11,6 +11,7 @@ type Props = {
   topStoreNames: string[];
   weights: Weights;
   onSelectSuggestion: (store: StoreWithScore, nextWeights: Weights) => void;
+  onInputFocusChange?: (focused: boolean) => void;
 };
 
 const MODE_TO_PRESET: Record<string, Weights> = {
@@ -53,6 +54,7 @@ export default function ChatPlaceholder({
   topStoreNames,
   weights,
   onSelectSuggestion,
+  onInputFocusChange,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -141,8 +143,8 @@ export default function ChatPlaceholder({
             <div
               key={`${message.role}-${index}`}
               className={`max-w-[85%] rounded-2xl border-2 border-black px-3 py-2 text-sm whitespace-pre-wrap shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${message.role === "user"
-                  ? "ml-auto bg-[#FF6B35] font-semibold text-white"
-                  : "mr-auto bg-white text-gray-800"
+                ? "ml-auto bg-[#FF6B35] font-semibold text-white"
+                : "mr-auto bg-white text-gray-800"
                 }`}
             >
               {message.content}
@@ -196,8 +198,10 @@ export default function ChatPlaceholder({
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
+            onFocus={() => onInputFocusChange?.(true)}
+            onBlur={() => onInputFocusChange?.(false)}
             placeholder="例: 2人で静かに話せる、駅近の店"
-            className="h-10 flex-1 rounded-xl border-2 border-black bg-white px-3 text-sm font-semibold outline-none"
+            className="h-10 flex-1 rounded-xl border-2 border-black bg-white px-3 text-base font-semibold outline-none"
             maxLength={300}
             disabled={sending}
           />

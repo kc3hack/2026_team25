@@ -33,7 +33,7 @@ import {
 } from "./types";
 
 type MobileSheetLevel = "topPeek" | "half" | "closed";
-const TOP_BAR_HEIGHT = 68;
+const TOP_BAR_HEIGHT = 76;
 
 const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "topPeek",
@@ -41,8 +41,12 @@ const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "closed",
 ];
 
-function getLevelHeightPx(level: MobileSheetLevel, viewportHeight: number): number {
-  const availableHeight = Math.max(280, viewportHeight - TOP_BAR_HEIGHT);
+function getLevelHeightPx(
+  level: MobileSheetLevel,
+  viewportHeight: number,
+  topBarHeight: number
+): number {
+  const availableHeight = Math.max(280, viewportHeight - topBarHeight);
   if (level === "topPeek") return availableHeight * 0.88;
   if (level === "half") return availableHeight * 0.56;
   return 92;
@@ -60,12 +64,15 @@ function App() {
   );
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
+  const [topBarHeight, setTopBarHeight] = useState(TOP_BAR_HEIGHT);
   const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>("half");
   const [mobileTab, setMobileTab] = useState<"controls" | "list">("controls");
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const [mobileDragHeight, setMobileDragHeight] = useState<number | null>(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const { weights, updateWeight, applyPreset, resetWeights } = useWeights();
   const panelRef = useRef<HTMLElement | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragStartHeightRef = useRef<number>(0);
   const activePointerIdRef = useRef<number | null>(null);
@@ -79,6 +86,33 @@ function App() {
       )
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setKeyboardInset(0);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const updateInset = () => {
+      const inset = Math.max(
+        0,
+        window.innerHeight - viewport.height - viewport.offsetTop
+      );
+      setKeyboardInset(inset);
+    };
+
+    updateInset();
+    viewport.addEventListener("resize", updateInset);
+    viewport.addEventListener("scroll", updateInset);
+
+    return () => {
+      viewport.removeEventListener("resize", updateInset);
+      viewport.removeEventListener("scroll", updateInset);
+    };
+  }, [isMobile]);
 
   // スライダー変更ごとにフロントで再計算
   const storesWithScore = useMemo(
@@ -123,6 +157,11 @@ function App() {
 
   useEffect(() => {
     const handleResize = () => {
+      const measuredHeader = headerRef.current?.offsetHeight;
+      if (measuredHeader && Number.isFinite(measuredHeader)) {
+        setTopBarHeight(measuredHeader);
+      }
+
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       if (!mobile) {
@@ -143,7 +182,11 @@ function App() {
 
     activePointerIdRef.current = e.pointerId;
     dragStartYRef.current = e.clientY;
-    dragStartHeightRef.current = getLevelHeightPx(mobileSheetLevel, window.innerHeight);
+    dragStartHeightRef.current = getLevelHeightPx(
+      mobileSheetLevel,
+      window.innerHeight,
+      topBarHeight
+    );
     setMobileDragHeight(dragStartHeightRef.current);
     setIsDraggingSheet(true);
 
@@ -157,8 +200,8 @@ function App() {
       if (activePointerIdRef.current !== moveEvent.pointerId) return;
       if (dragStartYRef.current === null) return;
       const viewportHeight = window.innerHeight;
-      const minHeight = getLevelHeightPx("closed", viewportHeight);
-      const maxHeight = getLevelHeightPx("topPeek", viewportHeight);
+      const minHeight = getLevelHeightPx("closed", viewportHeight, topBarHeight);
+      const maxHeight = getLevelHeightPx("topPeek", viewportHeight, topBarHeight);
       const delta = moveEvent.clientY - dragStartYRef.current;
       const nextHeight = Math.max(
         minHeight,
@@ -185,8 +228,8 @@ function App() {
 
       const delta = upEvent.clientY - startY;
       const viewportHeight = window.innerHeight;
-      const minHeight = getLevelHeightPx("closed", viewportHeight);
-      const maxHeight = getLevelHeightPx("topPeek", viewportHeight);
+      const minHeight = getLevelHeightPx("closed", viewportHeight, topBarHeight);
+      const maxHeight = getLevelHeightPx("topPeek", viewportHeight, topBarHeight);
 
       const draggedHeight = Math.max(
         minHeight,
@@ -195,10 +238,10 @@ function App() {
 
       const nearestLevel = MOBILE_SHEET_LEVELS.reduce((nearest, candidate) => {
         const nearestDiff = Math.abs(
-          draggedHeight - getLevelHeightPx(nearest, viewportHeight)
+          draggedHeight - getLevelHeightPx(nearest, viewportHeight, topBarHeight)
         );
         const candidateDiff = Math.abs(
-          draggedHeight - getLevelHeightPx(candidate, viewportHeight)
+          draggedHeight - getLevelHeightPx(candidate, viewportHeight, topBarHeight)
         );
         return candidateDiff < nearestDiff ? candidate : nearest;
       }, "half" as MobileSheetLevel);
@@ -217,7 +260,11 @@ function App() {
     if (!touch) return;
 
     dragStartYRef.current = touch.clientY;
-    dragStartHeightRef.current = getLevelHeightPx(mobileSheetLevel, window.innerHeight);
+    dragStartHeightRef.current = getLevelHeightPx(
+      mobileSheetLevel,
+      window.innerHeight,
+      topBarHeight
+    );
     setMobileDragHeight(dragStartHeightRef.current);
     setIsDraggingSheet(true);
 
@@ -227,8 +274,8 @@ function App() {
       moveEvent.preventDefault();
 
       const viewportHeight = window.innerHeight;
-      const minHeight = getLevelHeightPx("closed", viewportHeight);
-      const maxHeight = getLevelHeightPx("topPeek", viewportHeight);
+      const minHeight = getLevelHeightPx("closed", viewportHeight, topBarHeight);
+      const maxHeight = getLevelHeightPx("topPeek", viewportHeight, topBarHeight);
       const delta = nextTouch.clientY - dragStartYRef.current;
       const nextHeight = Math.max(
         minHeight,
@@ -254,8 +301,8 @@ function App() {
 
       const delta = changed.clientY - startY;
       const viewportHeight = window.innerHeight;
-      const minHeight = getLevelHeightPx("closed", viewportHeight);
-      const maxHeight = getLevelHeightPx("topPeek", viewportHeight);
+      const minHeight = getLevelHeightPx("closed", viewportHeight, topBarHeight);
+      const maxHeight = getLevelHeightPx("topPeek", viewportHeight, topBarHeight);
 
       const draggedHeight = Math.max(
         minHeight,
@@ -264,10 +311,10 @@ function App() {
 
       const nearestLevel = MOBILE_SHEET_LEVELS.reduce((nearest, candidate) => {
         const nearestDiff = Math.abs(
-          draggedHeight - getLevelHeightPx(nearest, viewportHeight)
+          draggedHeight - getLevelHeightPx(nearest, viewportHeight, topBarHeight)
         );
         const candidateDiff = Math.abs(
-          draggedHeight - getLevelHeightPx(candidate, viewportHeight)
+          draggedHeight - getLevelHeightPx(candidate, viewportHeight, topBarHeight)
         );
         return candidateDiff < nearestDiff ? candidate : nearest;
       }, "half" as MobileSheetLevel);
@@ -290,6 +337,8 @@ function App() {
   const allZero = Object.values(weights).every((v) => v === 0);
   const isDummyMode = !import.meta.env.VITE_API_URL;
   const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
+  const bottomNavOffset = isMobile && activeTab === "chat" ? keyboardInset : 0;
+  const chatSectionBottom = 56 + bottomNavOffset;
 
   const mobileSheetHeightClass =
     mobileSheetLevel === "topPeek"
@@ -325,7 +374,10 @@ function App() {
 
   return (
     <div className="relative h-screen w-screen bg-slate-100">
-      <header className="absolute inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4">
+      <header
+        ref={headerRef}
+        className="absolute inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4"
+      >
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <button
             type="button"
@@ -364,8 +416,11 @@ function App() {
       </header>
 
       <div
-        className={`flex h-[calc(100vh-68px)] pt-[68px] md:flex-row ${isMobile && activeTab !== "home" ? "hidden" : ""
-          }`}
+        style={{
+          paddingTop: `${topBarHeight}px`,
+          height: `calc(100vh - ${topBarHeight}px)`,
+        }}
+        className={`flex md:flex-row ${isMobile && activeTab !== "home" ? "hidden" : ""}`}
       >
         {/* --- 左パネル --- */}
         <aside
@@ -376,8 +431,8 @@ function App() {
               : undefined
           }
           className={`z-20 order-2 flex w-full shrink-0 flex-col overflow-y-auto bg-slate-50 transition-all duration-300 md:order-1 md:h-full md:w-[390px] md:border-r md:border-t-0 ${isMobile
-              ? `absolute bottom-14 left-0 right-0 rounded-t-3xl border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.18)] ${mobileSheetHeightClass}`
-              : "h-full border-t"
+            ? `absolute bottom-14 left-0 right-0 rounded-t-3xl border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.18)] ${mobileSheetHeightClass}`
+            : "h-full border-t"
             }`}
         >
           {isMobile && (
@@ -402,8 +457,8 @@ function App() {
                       key={genre}
                       onClick={() => setSelectedGenre(genre)}
                       className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${selectedGenre === genre
-                          ? "border-black bg-black text-white"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        ? "border-black bg-black text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                         }`}
                     >
                       {genre}
@@ -425,8 +480,8 @@ function App() {
                     setMobileSheetLevel("topPeek");
                   }}
                   className={`flex items-center justify-center gap-2 rounded-3xl border-[3px] px-4 py-3 text-sm font-black shadow-[0_5px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
-                      ? "border-black bg-black text-white"
-                      : "border-black bg-slate-100 text-black"
+                    ? "border-black bg-black text-white"
+                    : "border-black bg-slate-100 text-black"
                     }`}
                 >
                   <SlidersHorizontal size={18} strokeWidth={3} />
@@ -438,8 +493,8 @@ function App() {
                     setMobileSheetLevel("half");
                   }}
                   className={`flex items-center justify-center gap-2 rounded-3xl border-[3px] px-4 py-3 text-sm font-black shadow-[0_5px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
-                      ? "border-black bg-black text-white"
-                      : "border-black bg-slate-100 text-black"
+                    ? "border-black bg-black text-white"
+                    : "border-black bg-slate-100 text-black"
                     }`}
                 >
                   <Trophy size={18} strokeWidth={3} />
@@ -555,7 +610,13 @@ function App() {
       </div>
 
       {isMobile && activeTab === "chat" && (
-        <section className="absolute inset-x-0 bottom-14 top-[68px] z-30">
+        <section
+          style={{
+            top: `${topBarHeight}px`,
+            bottom: `${chatSectionBottom}px`,
+          }}
+          className="absolute inset-x-0 z-30"
+        >
           <ChatPlaceholder
             stores={stores}
             selectedGenre={selectedGenre === "すべて" ? null : selectedGenre}
@@ -567,7 +628,10 @@ function App() {
       )}
 
       {isMobile && activeTab === "profile" && (
-        <section className="absolute inset-x-0 bottom-14 top-[68px] z-30">
+        <section
+          style={{ top: `${topBarHeight}px` }}
+          className="absolute inset-x-0 bottom-14 z-30"
+        >
           <ProfileView
             favoriteStores={favoriteStores}
             onOpenStore={(store) => {
@@ -582,7 +646,10 @@ function App() {
       )}
 
       {isMobile && (
-        <div className="absolute inset-x-0 bottom-0 z-50">
+        <div
+          style={{ bottom: `${bottomNavOffset}px` }}
+          className="absolute inset-x-0 z-50"
+        >
           <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
       )}
