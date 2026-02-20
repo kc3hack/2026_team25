@@ -24,11 +24,9 @@ import {
 } from "./components/Panel";
 import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
-import { fetchStores, sendChatMessage } from "./lib/api";
+import { fetchStores } from "./lib/api";
 import { SlidersHorizontal, Trophy } from "lucide-react";
 import {
-  PRESETS,
-  type ChatMessage,
   type Store,
   type StoreWithScore,
   type Weights,
@@ -42,12 +40,6 @@ const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "half",
   "closed",
 ];
-
-const MODE_TO_PRESET: Record<string, Weights> = {
-  金欠: PRESETS["金欠モード"],
-  デート: PRESETS["デートモード"],
-  急ぎ: PRESETS["急ぎモード"],
-};
 
 function getLevelHeightPx(level: MobileSheetLevel, viewportHeight: number): number {
   const availableHeight = Math.max(280, viewportHeight - TOP_BAR_HEIGHT);
@@ -72,9 +64,6 @@ function App() {
   const [mobileTab, setMobileTab] = useState<"controls" | "list">("controls");
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const [mobileDragHeight, setMobileDragHeight] = useState<number | null>(null);
-  const [wishInput, setWishInput] = useState("");
-  const [aiAdvice, setAiAdvice] = useState("");
-  const [isOptimizing, setIsOptimizing] = useState(false);
   const { weights, updateWeight, applyPreset, resetWeights } = useWeights();
   const panelRef = useRef<HTMLElement | null>(null);
   const dragStartYRef = useRef<number | null>(null);
@@ -309,62 +298,6 @@ function App() {
         ? "h-[56%]"
         : "h-[92px]";
 
-  const clampWeight = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
-
-  const buildOptimizedWeights = (input: string, detectedMode: string | null): Weights => {
-    if (detectedMode && MODE_TO_PRESET[detectedMode]) {
-      return MODE_TO_PRESET[detectedMode];
-    }
-
-    const text = input.toLowerCase();
-    const next: Weights = { ...weights };
-
-    if (/(安い|コスパ|節約|予算|金欠)/.test(text)) next.price += 32;
-    if (/(駅近|近い|アクセス|歩き|移動)/.test(text)) next.access += 28;
-    if (/(評価|高評価|レビュー|口コミ|うまい|美味)/.test(text)) next.rating += 26;
-    if (/(デート|おしゃれ|雰囲気|映え|落ち着)/.test(text)) next.vibe += 30;
-    if (/(早い|急ぎ|サクッ|すぐ|時短|待たない)/.test(text)) next.speed += 34;
-    if (/(ゆっくり|長居|まったり)/.test(text)) next.speed -= 24;
-
-    return {
-      price: clampWeight(next.price),
-      access: clampWeight(next.access),
-      rating: clampWeight(next.rating),
-      vibe: clampWeight(next.vibe),
-      speed: clampWeight(next.speed),
-    };
-  };
-
-  const handleAIOptimize = async () => {
-    const message = wishInput.trim();
-    if (!message || isOptimizing) return;
-
-    setIsOptimizing(true);
-    try {
-      const history: ChatMessage[] = [];
-      const response = await sendChatMessage({
-        message,
-        history,
-        context: {
-          selectedGenre: selectedGenre === "すべて" ? null : selectedGenre,
-          topStoreNames: rankedStores.slice(0, 3).map((s) => s.name),
-          weights,
-        },
-      });
-
-      const nextWeights = buildOptimizedWeights(message, response.detected_mode);
-      applyPreset(nextWeights);
-      setAiAdvice(response.assistant_message);
-
-      if (isMobile) {
-        setMobileTab("list");
-        setMobileSheetLevel("half");
-      }
-    } finally {
-      setIsOptimizing(false);
-    }
-  };
-
   const toggleFavorite = useCallback((storeId: string) => {
     setFavoriteIds((prev) => {
       const next = new Set(prev);
@@ -509,30 +442,6 @@ function App() {
             <>
               {(!isMobile || mobileTab === "controls") && (
                 <div className="space-y-3 p-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <p className="mb-2 text-xs font-black tracking-wide text-slate-500">
-                      AI 絞り込みアシスト
-                    </p>
-                    <textarea
-                      value={wishInput}
-                      onChange={(e) => setWishInput(e.target.value)}
-                      placeholder="例）駅近で、コスパ良くて、静かめのお店がいい"
-                      className="h-20 w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-300"
-                    />
-                    <button
-                      onClick={handleAIOptimize}
-                      disabled={isOptimizing || !wishInput.trim()}
-                      className="mt-2 w-full rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-black text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
-                    >
-                      {isOptimizing ? "最適化中..." : "絞り込む！"}
-                    </button>
-                    {aiAdvice && (
-                      <p className="mt-2 whitespace-pre-line rounded-xl border border-emerald-100 bg-emerald-50 p-2 text-xs text-emerald-900">
-                        {aiAdvice}
-                      </p>
-                    )}
-                  </div>
-
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                     <p className="mb-2 text-xs font-black tracking-wide text-slate-500">クイックモード</p>
                     <PresetButtons onSelect={applyPreset} onReset={resetWeights} />
