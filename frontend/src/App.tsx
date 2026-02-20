@@ -327,11 +327,22 @@ function App() {
     <div className="relative h-screen w-screen bg-slate-100">
       <header className="absolute inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
-          <img
-            src="/WagamamaGourmetLogo.png"
-            alt="Wagamama Gourmet"
-            className="h-10 w-auto shrink-0 object-contain"
-          />
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("home");
+              setMobileTab("controls");
+              setMobileSheetLevel("half");
+            }}
+            className="shrink-0"
+            aria-label="ホームに戻る"
+          >
+            <img
+              src="/WagamamaGourmetLogo.png"
+              alt="Wagamama Gourmet"
+              className="h-10 w-auto object-contain"
+            />
+          </button>
 
           <div className="flex w-full items-center gap-2 rounded-[28px] border-2 border-black bg-slate-100 px-4 py-2 shadow-[0_4px_0_0_rgba(0,0,0,1)]">
             <span className="text-xl">🔍</span>
