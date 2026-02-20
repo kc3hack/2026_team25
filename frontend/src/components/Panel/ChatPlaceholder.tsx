@@ -112,7 +112,7 @@ export default function ChatPlaceholder({
 
       setLastWeights(nextWeights);
       setSuggestedStores(top3);
-    } catch (_err) {
+    } catch {
       setError("返信の取得に失敗しました。少し待って再試行してください。");
     } finally {
       setSending(false);

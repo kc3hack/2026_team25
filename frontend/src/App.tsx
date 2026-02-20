@@ -4,24 +4,20 @@
 // ============================================
 
 import {
+  Suspense,
   useCallback,
   useEffect,
+  lazy,
   useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type TouchEvent as ReactTouchEvent,
 } from "react";
-import { MapView } from "./components/Map";
-import {
-  BottomNav,
-  ChatPlaceholder,
-  PresetButtons,
-  ProfileView,
-  SliderGroup,
-  StoreCard,
-  type Tab,
-} from "./components/Panel";
+import BottomNav, { type Tab } from "./components/Panel/BottomNav";
+import PresetButtons from "./components/Panel/PresetButtons";
+import SliderGroup from "./components/Panel/SliderGroup";
+import StoreCard from "./components/Panel/StoreCard";
 import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
 import { fetchStores } from "./lib/api";
@@ -34,6 +30,9 @@ import {
 
 type MobileSheetLevel = "topPeek" | "half" | "closed";
 const TOP_BAR_HEIGHT = 68;
+const LazyMapView = lazy(() => import("./components/map/MapView"));
+const LazyChatPlaceholder = lazy(() => import("./components/Panel/ChatPlaceholder"));
+const LazyProfileView = lazy(() => import("./components/Panel/ProfileView"));
 
 const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "topPeek",
@@ -544,11 +543,19 @@ function App() {
         {/* --- 地図エリア --- */}
         <main className="order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
           <div className="h-full w-full overflow-hidden bg-white md:rounded-2xl md:border md:border-slate-200 md:shadow-sm">
-            <MapView
-              stores={filteredStoresWithScore}
-              favoriteIds={favoriteIds}
-              onToggleFavorite={toggleFavorite}
-            />
+            <Suspense
+              fallback={
+                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-500">
+                  地図を読み込み中...
+                </div>
+              }
+            >
+              <LazyMapView
+                stores={filteredStoresWithScore}
+                favoriteIds={favoriteIds}
+                onToggleFavorite={toggleFavorite}
+              />
+            </Suspense>
           </div>
         </main>
 
@@ -556,28 +563,44 @@ function App() {
 
       {isMobile && activeTab === "chat" && (
         <section className="absolute inset-x-0 bottom-14 top-[68px] z-30">
-          <ChatPlaceholder
-            stores={stores}
-            selectedGenre={selectedGenre === "すべて" ? null : selectedGenre}
-            topStoreNames={rankedStores.slice(0, 3).map((store) => store.name)}
-            weights={weights}
-            onSelectSuggestion={handleSelectSuggestedStore}
-          />
+          <Suspense
+            fallback={
+              <div className="flex h-full w-full items-center justify-center bg-[#FDFBF7] text-sm font-semibold text-slate-600">
+                チャットを読み込み中...
+              </div>
+            }
+          >
+            <LazyChatPlaceholder
+              stores={stores}
+              selectedGenre={selectedGenre === "すべて" ? null : selectedGenre}
+              topStoreNames={rankedStores.slice(0, 3).map((store) => store.name)}
+              weights={weights}
+              onSelectSuggestion={handleSelectSuggestedStore}
+            />
+          </Suspense>
         </section>
       )}
 
       {isMobile && activeTab === "profile" && (
         <section className="absolute inset-x-0 bottom-14 top-[68px] z-30">
-          <ProfileView
-            favoriteStores={favoriteStores}
-            onOpenStore={(store) => {
-              setSelectedStore(store);
-              setActiveTab("home");
-              setMobileTab("list");
-              setMobileSheetLevel("half");
-            }}
-            onUnfavorite={toggleFavorite}
-          />
+          <Suspense
+            fallback={
+              <div className="flex h-full w-full items-center justify-center bg-[#FDFBF7] text-sm font-semibold text-slate-600">
+                プロフィールを読み込み中...
+              </div>
+            }
+          >
+            <LazyProfileView
+              favoriteStores={favoriteStores}
+              onOpenStore={(store) => {
+                setSelectedStore(store);
+                setActiveTab("home");
+                setMobileTab("list");
+                setMobileSheetLevel("half");
+              }}
+              onUnfavorite={toggleFavorite}
+            />
+          </Suspense>
         </section>
       )}
 

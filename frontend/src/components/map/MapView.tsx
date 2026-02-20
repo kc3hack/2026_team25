@@ -3,7 +3,7 @@
 // 【A専任】このファイルは A のみが編集する
 // ============================================
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import maplibregl from "maplibre-gl";
 import type { StoreWithScore } from "../../types";
@@ -22,6 +22,15 @@ interface MapViewProps {
 }
 
 type RankTier = 1 | 2 | 3 | null;
+type MarkerEntry = {
+  marker: maplibregl.Marker;
+  root: Root;
+  popup: maplibregl.Popup;
+  lng: number;
+  lat: number;
+  markerSignature: string;
+  popupSignature: string;
+};
 
 function escapeHtml(text: string): string {
   return text
@@ -32,14 +41,25 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#039;");
 }
 
+function createMarkerSignature(store: StoreWithScore, rank: RankTier): string {
+  return JSON.stringify({
+    rank,
+    normalizedScore: store.normalizedScore,
+    visible: store.visible,
+    pinColor: store.pinColor,
+  });
+}
+
+function createPopupSignature(store: StoreWithScore, favorite: boolean): string {
+  return `${store.name}|${store.genre}|${favorite ? 1 : 0}`;
+}
+
 export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<
-    Map<string, { marker: maplibregl.Marker; root: Root; popup: maplibregl.Popup }>
-  >(new Map());
+  const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
 
-  const bindFavoriteButton = (
+  const bindFavoriteButton = useCallback((
     popup: maplibregl.Popup,
     storeId: string,
     favorite: boolean
@@ -59,9 +79,9 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
       button.setAttribute("aria-label", nextFavorite ? "お気に入り解除" : "お気に入り登録");
       onToggleFavorite(storeId);
     };
-  };
+  }, [onToggleFavorite]);
 
-  const bindNavigateButton = (popup: maplibregl.Popup, store: StoreWithScore) => {
+  const bindNavigateButton = useCallback((popup: maplibregl.Popup, store: StoreWithScore) => {
     const popupEl = popup.getElement();
     const button = popupEl?.querySelector<HTMLButtonElement>(`button[data-nav-store-id="${store.id}"]`);
     if (!button) return;
@@ -73,9 +93,9 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
       const directionUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}&travelmode=walking`;
       window.open(directionUrl, "_blank", "noopener,noreferrer");
     };
-  };
+  }, []);
 
-  const applyPopupContent = (
+  const applyPopupContent = useCallback((
     popup: maplibregl.Popup,
     store: StoreWithScore,
     favorite: boolean
@@ -102,15 +122,16 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
       `
     );
 
+    if (popup.isOpen()) {
+      bindFavoriteButton(popup, store.id, favorite);
+      bindNavigateButton(popup, store);
+      return;
+    }
     popup.once("open", () => {
       bindFavoriteButton(popup, store.id, favorite);
       bindNavigateButton(popup, store);
     });
-    if (popup.isOpen()) {
-      bindFavoriteButton(popup, store.id, favorite);
-      bindNavigateButton(popup, store);
-    }
-  };
+  }, [bindFavoriteButton, bindNavigateButton]);
 
   // 地図の初期化
   useEffect(() => {
@@ -162,21 +183,33 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
 
     stores.forEach((store) => {
       const favorite = favoriteIds.has(store.id);
+      const rank = rankMap.get(store.id) ?? null;
+      const markerSignature = createMarkerSignature(store, rank);
+      const popupSignature = createPopupSignature(store, favorite);
       const existing = markersRef.current.get(store.id);
 
       if (existing) {
-        // 既存マーカーは再利用し、React描画のみ更新
-        existing.marker.setLngLat([store.lng, store.lat]);
-        applyPopupContent(existing.popup, store, favorite);
-        existing.root.render(
-          <MapMarker store={store} rank={rankMap.get(store.id) ?? null} />
-        );
+        if (existing.lng !== store.lng || existing.lat !== store.lat) {
+          existing.marker.setLngLat([store.lng, store.lat]);
+          existing.lng = store.lng;
+          existing.lat = store.lat;
+        }
+
+        if (existing.popupSignature !== popupSignature) {
+          applyPopupContent(existing.popup, store, favorite);
+          existing.popupSignature = popupSignature;
+        }
+
+        if (existing.markerSignature !== markerSignature) {
+          existing.root.render(<MapMarker store={store} rank={rank} />);
+          existing.markerSignature = markerSignature;
+        }
         return;
       }
 
       const el = document.createElement("div");
       const root = createRoot(el);
-      root.render(<MapMarker store={store} rank={rankMap.get(store.id) ?? null} />);
+      root.render(<MapMarker store={store} rank={rank} />);
       const popup = new maplibregl.Popup({ offset: 15 });
       applyPopupContent(popup, store, favorite);
 
@@ -185,9 +218,17 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
         .setPopup(popup)
         .addTo(mapRef.current!);
 
-      markersRef.current.set(store.id, { marker, root, popup });
+      markersRef.current.set(store.id, {
+        marker,
+        root,
+        popup,
+        lng: store.lng,
+        lat: store.lat,
+        markerSignature,
+        popupSignature,
+      });
     });
-  }, [stores, favoriteIds, onToggleFavorite]);
+  }, [stores, favoriteIds, applyPopupContent]);
 
   return <div ref={mapContainer} className="map-container" />;
 }
