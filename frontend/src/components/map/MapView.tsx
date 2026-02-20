@@ -17,16 +17,76 @@ const MAP_STYLE_URL = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.j
 
 interface MapViewProps {
   stores: StoreWithScore[];
+  favoriteIds: Set<string>;
+  onToggleFavorite: (storeId: string) => void;
 }
 
 type RankTier = 1 | 2 | 3 | null;
 
-export default function MapView({ stores }: MapViewProps) {
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<
-    Map<string, { marker: maplibregl.Marker; root: Root }>
+    Map<string, { marker: maplibregl.Marker; root: Root; popup: maplibregl.Popup }>
   >(new Map());
+
+  const bindFavoriteButton = (
+    popup: maplibregl.Popup,
+    storeId: string,
+    favorite: boolean
+  ) => {
+    const popupEl = popup.getElement();
+    const button = popupEl?.querySelector<HTMLButtonElement>(`button[data-fav-store-id="${storeId}"]`);
+    if (!button) return;
+
+    button.textContent = favorite ? "★" : "☆";
+    button.setAttribute("aria-label", favorite ? "お気に入り解除" : "お気に入り登録");
+    button.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const nextFavorite = button.textContent !== "★";
+      button.textContent = nextFavorite ? "★" : "☆";
+      button.setAttribute("aria-label", nextFavorite ? "お気に入り解除" : "お気に入り登録");
+      onToggleFavorite(storeId);
+    };
+  };
+
+  const applyPopupContent = (
+    popup: maplibregl.Popup,
+    store: StoreWithScore,
+    favorite: boolean
+  ) => {
+    popup.setHTML(
+      `
+        <div style="display:flex;align-items:center;gap:8px;">
+          <strong>${escapeHtml(store.name)}</strong>
+          <button
+            data-fav-store-id="${store.id}"
+            style="border:1.5px solid #111;border-radius:9999px;background:#fff;padding:2px 6px;cursor:pointer;font-weight:700;line-height:1;"
+            aria-label="${favorite ? "お気に入り解除" : "お気に入り登録"}"
+          >
+            ${favorite ? "★" : "☆"}
+          </button>
+        </div>
+        <div>${escapeHtml(store.genre)}</div>
+      `
+    );
+
+    popup.once("open", () => bindFavoriteButton(popup, store.id, favorite));
+    if (popup.isOpen()) {
+      bindFavoriteButton(popup, store.id, favorite);
+    }
+  };
 
   // 地図の初期化
   useEffect(() => {
@@ -77,11 +137,13 @@ export default function MapView({ stores }: MapViewProps) {
     });
 
     stores.forEach((store) => {
+      const favorite = favoriteIds.has(store.id);
       const existing = markersRef.current.get(store.id);
 
       if (existing) {
         // 既存マーカーは再利用し、React描画のみ更新
         existing.marker.setLngLat([store.lng, store.lat]);
+        applyPopupContent(existing.popup, store, favorite);
         existing.root.render(
           <MapMarker store={store} rank={rankMap.get(store.id) ?? null} />
         );
@@ -91,19 +153,17 @@ export default function MapView({ stores }: MapViewProps) {
       const el = document.createElement("div");
       const root = createRoot(el);
       root.render(<MapMarker store={store} rank={rankMap.get(store.id) ?? null} />);
+      const popup = new maplibregl.Popup({ offset: 15 });
+      applyPopupContent(popup, store, favorite);
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([store.lng, store.lat])
-        .setPopup(
-          new maplibregl.Popup({ offset: 15 }).setHTML(
-            `<strong>${store.name}</strong><br/>${store.genre}`
-          )
-        )
+        .setPopup(popup)
         .addTo(mapRef.current!);
 
-      markersRef.current.set(store.id, { marker, root });
+      markersRef.current.set(store.id, { marker, root, popup });
     });
-  }, [stores]);
+  }, [stores, favoriteIds, onToggleFavorite]);
 
   return <div ref={mapContainer} className="map-container" />;
 }

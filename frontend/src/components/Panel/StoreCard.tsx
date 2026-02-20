@@ -8,6 +8,8 @@ import { WEIGHT_LABELS } from "../../types";
 
 interface StoreCardProps {
   store: StoreWithScore | null;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
   onClose?: () => void;
 }
 
@@ -68,7 +70,12 @@ const SVG_PAD = 28;
 const SVG_VIEWBOX_MIN = -SVG_PAD;
 const SVG_VIEWBOX_SIZE = CHART_SIZE + SVG_PAD * 2;
 
-export default function StoreCard({ store, onClose }: StoreCardProps) {
+export default function StoreCard({
+  store,
+  isFavorite = false,
+  onToggleFavorite,
+  onClose,
+}: StoreCardProps) {
   if (!store) return null;
 
   const values = SCORE_KEYS.map((k) => store[k]);
@@ -76,8 +83,19 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
   return (
     <div className="rounded-2xl border-2 border-black bg-[#FDFBF7] p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
       <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-black text-black">{store.name}</h3>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="truncate text-lg font-black text-black">{store.name}</h3>
+            {onToggleFavorite && (
+              <button
+                onClick={onToggleFavorite}
+                aria-label={isFavorite ? "お気に入り解除" : "お気に入り登録"}
+                className="shrink-0 rounded-full border-2 border-black bg-white px-2 py-0.5 text-base leading-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
+              >
+                {isFavorite ? "★" : "☆"}
+              </button>
+            )}
+          </div>
           <p className="text-sm font-semibold text-gray-600">{store.genre}</p>
         </div>
         {onClose && (

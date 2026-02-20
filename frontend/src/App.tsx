@@ -4,6 +4,7 @@
 // ============================================
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -56,6 +57,7 @@ function App() {
   const [selectedStore, setSelectedStore] = useState<StoreWithScore | null>(
     null
   );
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
   const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>("half");
   const [mobileTab, setMobileTab] = useState<"controls" | "list">("controls");
@@ -345,6 +347,18 @@ function App() {
     }
   };
 
+  const toggleFavorite = useCallback((storeId: string) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(storeId)) {
+        next.delete(storeId);
+      } else {
+        next.add(storeId);
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <div className="relative h-screen w-screen bg-slate-100">
       <header className="absolute inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4">
@@ -503,7 +517,12 @@ function App() {
 
             {isMobile && mobileTab === "list" && selectedStore && (
               <div className="border-t border-slate-200 p-4">
-                <StoreCard store={selectedStore} onClose={() => setSelectedStore(null)} />
+                <StoreCard
+                  store={selectedStore}
+                  isFavorite={favoriteIds.has(selectedStore.id)}
+                  onToggleFavorite={() => toggleFavorite(selectedStore.id)}
+                  onClose={() => setSelectedStore(null)}
+                />
               </div>
             )}
           </>
@@ -532,6 +551,8 @@ function App() {
           <div className="border-t border-slate-200 p-4">
             <StoreCard
               store={selectedStore}
+              isFavorite={favoriteIds.has(selectedStore.id)}
+              onToggleFavorite={() => toggleFavorite(selectedStore.id)}
               onClose={() => setSelectedStore(null)}
             />
           </div>
@@ -583,7 +604,11 @@ function App() {
       {/* --- 地図エリア --- */}
       <main className="order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
         <div className="h-full w-full overflow-hidden bg-white md:rounded-2xl md:border md:border-slate-200 md:shadow-sm">
-          <MapView stores={filteredStoresWithScore} />
+          <MapView
+            stores={filteredStoresWithScore}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={toggleFavorite}
+          />
         </div>
       </main>
 
