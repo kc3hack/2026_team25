@@ -20,13 +20,32 @@ interface MapViewProps {
 }
 
 type RankTier = 1 | 2 | 3 | null;
+type MarkerEntry = {
+  marker: maplibregl.Marker;
+  root: Root;
+  signature: string;
+  popupHtml: string;
+  lng: number;
+  lat: number;
+};
+
+function createMarkerSignature(store: StoreWithScore, rank: RankTier): string {
+  return JSON.stringify({
+    normalizedScore: store.normalizedScore,
+    visible: store.visible,
+    pinColor: store.pinColor,
+    rank,
+  });
+}
+
+function createPopupHtml(store: StoreWithScore): string {
+  return `<strong>${store.name}</strong><br/>${store.genre}`;
+}
 
 export default function MapView({ stores }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<
-    Map<string, { marker: maplibregl.Marker; root: Root }>
-  >(new Map());
+  const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
 
   // 地図の初期化
   useEffect(() => {
@@ -77,31 +96,47 @@ export default function MapView({ stores }: MapViewProps) {
     });
 
     stores.forEach((store) => {
+      const rank = rankMap.get(store.id) ?? null;
+      const popupHtml = createPopupHtml(store);
+      const signature = createMarkerSignature(store, rank);
       const existing = markersRef.current.get(store.id);
 
       if (existing) {
-        // 既存マーカーは再利用し、React描画のみ更新
-        existing.marker.setLngLat([store.lng, store.lat]);
-        existing.root.render(
-          <MapMarker store={store} rank={rankMap.get(store.id) ?? null} />
-        );
+        if (existing.lng !== store.lng || existing.lat !== store.lat) {
+          existing.marker.setLngLat([store.lng, store.lat]);
+          existing.lng = store.lng;
+          existing.lat = store.lat;
+        }
+
+        if (existing.popupHtml !== popupHtml) {
+          existing.marker.getPopup()?.setHTML(popupHtml);
+          existing.popupHtml = popupHtml;
+        }
+
+        if (existing.signature !== signature) {
+          existing.root.render(<MapMarker store={store} rank={rank} />);
+          existing.signature = signature;
+        }
         return;
       }
 
       const el = document.createElement("div");
       const root = createRoot(el);
-      root.render(<MapMarker store={store} rank={rankMap.get(store.id) ?? null} />);
+      root.render(<MapMarker store={store} rank={rank} />);
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([store.lng, store.lat])
-        .setPopup(
-          new maplibregl.Popup({ offset: 15 }).setHTML(
-            `<strong>${store.name}</strong><br/>${store.genre}`
-          )
-        )
+        .setPopup(new maplibregl.Popup({ offset: 15 }).setHTML(popupHtml))
         .addTo(mapRef.current!);
 
-      markersRef.current.set(store.id, { marker, root });
+      markersRef.current.set(store.id, {
+        marker,
+        root,
+        signature,
+        popupHtml,
+        lng: store.lng,
+        lat: store.lat,
+      });
     });
   }, [stores]);
 

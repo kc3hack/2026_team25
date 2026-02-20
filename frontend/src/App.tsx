@@ -4,14 +4,15 @@
 // ============================================
 
 import {
+  Suspense,
   useEffect,
+  lazy,
   useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type TouchEvent as ReactTouchEvent,
 } from "react";
-import { MapView } from "./components/Map";
 import { SliderGroup, PresetButtons, StoreCard } from "./components/Panel";
 import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
@@ -27,6 +28,7 @@ import {
 
 type MobileSheetLevel = "topPeek" | "half" | "closed";
 const TOP_BAR_HEIGHT = 68;
+const LazyMapView = lazy(() => import("./components/map/MapView"));
 
 const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "topPeek",
@@ -583,7 +585,15 @@ function App() {
       {/* --- 地図エリア --- */}
       <main className="order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
         <div className="h-full w-full overflow-hidden bg-white md:rounded-2xl md:border md:border-slate-200 md:shadow-sm">
-          <MapView stores={filteredStoresWithScore} />
+          <Suspense
+            fallback={
+              <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-500">
+                地図を読み込み中...
+              </div>
+            }
+          >
+            <LazyMapView stores={filteredStoresWithScore} />
+          </Suspense>
         </div>
       </main>
 
