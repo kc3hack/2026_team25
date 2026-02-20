@@ -14,5 +14,9 @@ CREATE TABLE IF NOT EXISTS stores (
   rating_score DOUBLE PRECISION NOT NULL CHECK (rating_score BETWEEN 0 AND 1),
   vibe_score DOUBLE PRECISION NOT NULL CHECK (vibe_score BETWEEN 0 AND 1),
   speed_score DOUBLE PRECISION NOT NULL CHECK (speed_score BETWEEN 0 AND 1),
+  walk_duration_sec INTEGER,
+  walk_distance_m INTEGER,
+  access_source TEXT,
+  access_updated_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

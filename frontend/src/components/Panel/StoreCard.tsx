@@ -76,6 +76,18 @@ const SVG_PAD = 28;
 const SVG_VIEWBOX_MIN = -SVG_PAD;
 const SVG_VIEWBOX_SIZE = CHART_SIZE + SVG_PAD * 2;
 
+function formatWalkDuration(seconds?: number): string | null {
+  if (seconds === undefined || seconds === null || seconds < 0) return null;
+  const mins = Math.round(seconds / 60);
+  return `${mins}分`;
+}
+
+function formatWalkDistance(meters?: number): string | null {
+  if (meters === undefined || meters === null || meters < 0) return null;
+  if (meters < 1000) return `${meters}m`;
+  return `${(meters / 1000).toFixed(1)}km`;
+}
+
 export default function StoreCard({
   store,
   isFavorite = false,
@@ -101,6 +113,8 @@ export default function StoreCard({
 
   const values = SCORE_KEYS.map((k) => store[k]);
   const travelModeSelectId = `travel-mode-${store.id}`;
+  const walkDurationLabel = formatWalkDuration(store.walk_duration_sec);
+  const walkDistanceLabel = formatWalkDistance(store.walk_distance_m);
 
   return (
     <div className="rounded-2xl border-2 border-black bg-[#FDFBF7] p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -140,6 +154,15 @@ export default function StoreCard({
           {(store.normalizedScore * 100).toFixed(0)}pt
         </span>
       </div>
+
+      {(walkDurationLabel || walkDistanceLabel) && (
+        <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+          KRP起点の徒歩目安:
+          {walkDurationLabel ? ` ${walkDurationLabel}` : ""}
+          {walkDurationLabel && walkDistanceLabel ? " / " : ""}
+          {walkDistanceLabel ?? ""}
+        </p>
+      )}
 
       <div className="mt-3 grid gap-1">
         <label htmlFor={travelModeSelectId} className="text-xs font-bold text-slate-600">
