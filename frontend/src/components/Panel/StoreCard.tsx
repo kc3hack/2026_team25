@@ -79,6 +79,7 @@ export default function StoreCard({
   if (!store) return null;
 
   const values = SCORE_KEYS.map((k) => store[k]);
+  const googleMapsDirectionUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}&travelmode=walking`;
 
   return (
     <div className="rounded-2xl border-2 border-black bg-[#FDFBF7] p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -117,6 +118,14 @@ export default function StoreCard({
           {(store.normalizedScore * 100).toFixed(0)}pt
         </span>
       </div>
+
+      <button
+        type="button"
+        onClick={() => window.open(googleMapsDirectionUrl, "_blank", "noopener,noreferrer")}
+        className="mt-3 w-full rounded-xl border-2 border-black bg-[#FF6B35] px-3 py-2 text-sm font-black text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+      >
+        ここにいく
+      </button>
 
       {/* --- レーダーチャート（五角形） --- */}
       <div className="mt-3 flex justify-center">

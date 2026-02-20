@@ -61,6 +61,20 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
     };
   };
 
+  const bindNavigateButton = (popup: maplibregl.Popup, store: StoreWithScore) => {
+    const popupEl = popup.getElement();
+    const button = popupEl?.querySelector<HTMLButtonElement>(`button[data-nav-store-id="${store.id}"]`);
+    if (!button) return;
+
+    button.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const directionUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}&travelmode=walking`;
+      window.open(directionUrl, "_blank", "noopener,noreferrer");
+    };
+  };
+
   const applyPopupContent = (
     popup: maplibregl.Popup,
     store: StoreWithScore,
@@ -79,12 +93,22 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
           </button>
         </div>
         <div>${escapeHtml(store.genre)}</div>
+        <button
+          data-nav-store-id="${store.id}"
+          style="margin-top:8px;border:1.5px solid #111;border-radius:10px;background:#ff6b35;color:#fff;padding:6px 10px;cursor:pointer;font-weight:800;"
+        >
+          ここにいく
+        </button>
       `
     );
 
-    popup.once("open", () => bindFavoriteButton(popup, store.id, favorite));
+    popup.once("open", () => {
+      bindFavoriteButton(popup, store.id, favorite);
+      bindNavigateButton(popup, store);
+    });
     if (popup.isOpen()) {
       bindFavoriteButton(popup, store.id, favorite);
+      bindNavigateButton(popup, store);
     }
   };
 

@@ -2,15 +2,58 @@ import { useMemo, useRef, useState } from "react";
 import { Loader2, Send } from "lucide-react";
 
 import { sendChatMessage } from "../../lib/api";
-import type { ChatMessage, Weights } from "../../types";
+import { calculateScores } from "../../lib/scoreEngine";
+import { PRESETS, type ChatMessage, type Store, type StoreWithScore, type Weights } from "../../types";
 
 type Props = {
+  stores: Store[];
   selectedGenre: string | null;
   topStoreNames: string[];
   weights: Weights;
+  onSelectSuggestion: (store: StoreWithScore, nextWeights: Weights) => void;
 };
 
-export default function ChatPlaceholder({ selectedGenre, topStoreNames, weights }: Props) {
+const MODE_TO_PRESET: Record<string, Weights> = {
+  金欠: PRESETS["金欠モード"],
+  デート: PRESETS["デートモード"],
+  急ぎ: PRESETS["急ぎモード"],
+};
+
+function clampWeight(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function buildOptimizedWeights(input: string, detectedMode: string | null, current: Weights): Weights {
+  if (detectedMode && MODE_TO_PRESET[detectedMode]) {
+    return MODE_TO_PRESET[detectedMode];
+  }
+
+  const text = input.toLowerCase();
+  const next: Weights = { ...current };
+
+  if (/(安い|コスパ|節約|予算|金欠)/.test(text)) next.price += 32;
+  if (/(駅近|近い|アクセス|歩き|移動)/.test(text)) next.access += 28;
+  if (/(評価|高評価|レビュー|口コミ|うまい|美味)/.test(text)) next.rating += 26;
+  if (/(デート|おしゃれ|雰囲気|映え|落ち着)/.test(text)) next.vibe += 30;
+  if (/(早い|急ぎ|サクッ|すぐ|時短|待たない)/.test(text)) next.speed += 34;
+  if (/(ゆっくり|長居|まったり)/.test(text)) next.speed -= 24;
+
+  return {
+    price: clampWeight(next.price),
+    access: clampWeight(next.access),
+    rating: clampWeight(next.rating),
+    vibe: clampWeight(next.vibe),
+    speed: clampWeight(next.speed),
+  };
+}
+
+export default function ChatPlaceholder({
+  stores,
+  selectedGenre,
+  topStoreNames,
+  weights,
+  onSelectSuggestion,
+}: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -21,6 +64,8 @@ export default function ChatPlaceholder({ selectedGenre, topStoreNames, weights 
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suggestedStores, setSuggestedStores] = useState<StoreWithScore[]>([]);
+  const [lastWeights, setLastWeights] = useState<Weights | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const canSend = useMemo(() => input.trim().length > 0 && !sending, [input, sending]);
@@ -58,6 +103,15 @@ export default function ChatPlaceholder({ selectedGenre, topStoreNames, weights 
           content: response.assistant_message,
         },
       ]);
+
+      const nextWeights = buildOptimizedWeights(text, response.detected_mode, weights);
+      const top3 = calculateScores(stores, nextWeights)
+        .filter((store) => store.visible)
+        .sort((a, b) => b.normalizedScore - a.normalizedScore)
+        .slice(0, 3);
+
+      setLastWeights(nextWeights);
+      setSuggestedStores(top3);
     } catch (_err) {
       setError("返信の取得に失敗しました。少し待って再試行してください。");
     } finally {
@@ -86,11 +140,10 @@ export default function ChatPlaceholder({ selectedGenre, topStoreNames, weights 
           {messages.map((message, index) => (
             <div
               key={`${message.role}-${index}`}
-              className={`max-w-[85%] rounded-2xl border-2 border-black px-3 py-2 text-sm whitespace-pre-wrap shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${
-                message.role === "user"
+              className={`max-w-[85%] rounded-2xl border-2 border-black px-3 py-2 text-sm whitespace-pre-wrap shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${message.role === "user"
                   ? "ml-auto bg-[#FF6B35] font-semibold text-white"
                   : "mr-auto bg-white text-gray-800"
-              }`}
+                }`}
             >
               {message.content}
             </div>
@@ -104,6 +157,36 @@ export default function ChatPlaceholder({ selectedGenre, topStoreNames, weights 
           )}
 
           {error && <div className="text-xs font-semibold text-red-600">{error}</div>}
+
+          {suggestedStores.length > 0 && (
+            <div className="mt-2 rounded-2xl border-2 border-black bg-white p-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+              <p className="mb-2 text-xs font-black text-gray-700">要望に合う上位3店舗</p>
+              <div className="flex flex-col gap-2">
+                {suggestedStores.map((store, index) => (
+                  <button
+                    key={store.id}
+                    type="button"
+                    onClick={() => {
+                      if (!lastWeights) return;
+                      onSelectSuggestion(store, lastWeights);
+                    }}
+                    className="flex items-center justify-between rounded-xl border-2 border-black bg-[#FDFBF7] px-3 py-2 text-left shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-black text-black">
+                        {index + 1}位 {store.name}
+                      </span>
+                      <span className="block text-[11px] font-semibold text-gray-600">{store.genre}</span>
+                    </span>
+                    <span className="ml-2 shrink-0 rounded-md bg-black px-2 py-0.5 text-[10px] font-black text-white">
+                      {(store.normalizedScore * 100).toFixed(0)}%
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div ref={bottomRef} />
         </div>
       </div>
