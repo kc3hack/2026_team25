@@ -3,32 +3,72 @@
 // 【B専任】このファイルは B のみが編集する
 // ============================================
 
-import { useEffect, useState, useMemo } from "react";
-import { MapView } from "./components/map";
 import {
-  SliderGroup,
-  PresetButtons,
-  BottomNav,
-  ChatPlaceholder,
-  SearchBar,
-  GenrePresets,
-  SliderDrawer,
-  StoreCard,
-} from "./components/Panel";
-import type { Tab } from "./components/Panel";
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
+import { MapView } from "./components/Map";
+import { SliderGroup, PresetButtons, StoreCard } from "./components/Panel";
 import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
-import { fetchStores } from "./lib/api";
-import type { Store, StoreWithScore } from "./types";
+import { fetchStores, sendChatMessage } from "./lib/api";
+import { SlidersHorizontal, Trophy } from "lucide-react";
+import {
+  PRESETS,
+  type ChatMessage,
+  type Store,
+  type StoreWithScore,
+  type Weights,
+} from "./types";
+
+type MobileSheetLevel = "topPeek" | "half" | "closed";
+const TOP_BAR_HEIGHT = 68;
+
+const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
+  "topPeek",
+  "half",
+  "closed",
+];
+
+const MODE_TO_PRESET: Record<string, Weights> = {
+  金欠: PRESETS["金欠モード"],
+  デート: PRESETS["デートモード"],
+  急ぎ: PRESETS["急ぎモード"],
+};
+
+function getLevelHeightPx(level: MobileSheetLevel, viewportHeight: number): number {
+  const availableHeight = Math.max(280, viewportHeight - TOP_BAR_HEIGHT);
+  if (level === "topPeek") return availableHeight * 0.88;
+  if (level === "half") return availableHeight * 0.56;
+  return 92;
+}
 
 function App() {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("map");
-  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
-  const [selectedStore, setSelectedStore] = useState<StoreWithScore | null>(null);
-  const { weights, updateWeight, applyPreset } = useWeights();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("すべて");
+  const [selectedStore, setSelectedStore] = useState<StoreWithScore | null>(
+    null
+  );
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>("half");
+  const [mobileTab, setMobileTab] = useState<"controls" | "list">("controls");
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false);
+  const [mobileDragHeight, setMobileDragHeight] = useState<number | null>(null);
+  const [wishInput, setWishInput] = useState("");
+  const [aiAdvice, setAiAdvice] = useState("");
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const { weights, updateWeight, applyPreset, resetWeights } = useWeights();
+  const panelRef = useRef<HTMLElement | null>(null);
+  const dragStartYRef = useRef<number | null>(null);
+  const dragStartHeightRef = useRef<number>(0);
+  const activePointerIdRef = useRef<number | null>(null);
 
   // 初回: APIから店舗データ取得
   useEffect(() => {
@@ -46,186 +86,508 @@ function App() {
     [stores, weights]
   );
 
-  // ジャンルフィルター適用
-  const filteredStores = useMemo(
-    () =>
-      selectedGenre
-        ? storesWithScore.filter((s) => s.genre === selectedGenre)
-        : storesWithScore,
-    [storesWithScore, selectedGenre]
-  );
+  const genres = useMemo(() => {
+    const unique = Array.from(new Set(stores.map((s) => s.genre))).sort();
+    return ["すべて", ...unique];
+  }, [stores]);
 
+  const filteredStoresWithScore = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return storesWithScore.filter((store) => {
+      const matchQuery =
+        !query ||
+        store.name.toLowerCase().includes(query) ||
+        store.genre.toLowerCase().includes(query);
+      const matchGenre =
+        selectedGenre === "すべて" || store.genre === selectedGenre;
+      return matchQuery && matchGenre;
+    });
+  }, [storesWithScore, searchQuery, selectedGenre]);
+
+  // スコア順にソート（visible のみ）
   const rankedStores = useMemo(
     () =>
-      [...filteredStores]
-        .filter((store) => store.visible)
+      [...filteredStoresWithScore]
+        .filter((s) => s.visible)
         .sort((a, b) => b.normalizedScore - a.normalizedScore),
-    [filteredStores]
+    [filteredStoresWithScore]
   );
 
-  const rankingSection = (
-    <>
-      {!loading && rankedStores.length > 0 && (
-        <div className="flex flex-col gap-1 border-t border-gray-200 p-4">
-          <h2 className="mb-2 text-sm font-bold text-gray-600">
-            ランキング（{rankedStores.length} / {filteredStores.length} 店舗）
-          </h2>
-          {rankedStores.map((store, i) => (
-            <button
-              key={store.id}
-              onClick={() => setSelectedStore(store)}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-gray-100 ${selectedStore?.id === store.id ? "bg-gray-100" : ""
-                }`}
-            >
-              <span className="w-5 shrink-0 text-center text-xs font-bold text-gray-400">
-                {i + 1}
-              </span>
-              <span
-                className="h-3 w-3 shrink-0 rounded-full"
-                style={{ backgroundColor: store.pinColor }}
-              />
-              <span className="flex-1 truncate font-medium">{store.name}</span>
-              <span className="shrink-0 text-xs text-gray-400">
-                {(store.normalizedScore * 100).toFixed(0)}pt
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setMobileSheetLevel("topPeek");
+      } else {
+        setMobileSheetLevel("half");
+      }
+    };
 
-      {selectedStore && (
-        <div className="border-t border-gray-200 p-4">
-          <StoreCard store={selectedStore} onClose={() => setSelectedStore(null)} />
-        </div>
-      )}
-    </>
-  );
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  // ホームタブ内容 (モバイル用)
-  const homeContent = (
-    <>
-      <div className="flex flex-col gap-4 px-4 py-3">
-        <h2 className="text-lg font-bold text-gray-900">モードで探す</h2>
-        <PresetButtons onSelect={applyPreset} />
+  const handleSheetPointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!isMobile) return;
 
-        <h2 className="text-lg font-bold text-gray-900">ジャンルから探す</h2>
-        <GenrePresets
-          selectedGenre={selectedGenre}
-          onGenreSelect={setSelectedGenre}
-        />
-      </div>
+    activePointerIdRef.current = e.pointerId;
+    dragStartYRef.current = e.clientY;
+    dragStartHeightRef.current = getLevelHeightPx(mobileSheetLevel, window.innerHeight);
+    setMobileDragHeight(dragStartHeightRef.current);
+    setIsDraggingSheet(true);
 
-      {loading && (
-        <div className="p-4 text-sm text-gray-400">読み込み中...</div>
-      )}
-      {error && (
-        <div className="p-4 text-sm text-red-500">
-          データ取得エラー: {error}
-        </div>
-      )}
-      {rankingSection}
-      <div className="mt-auto p-4 text-xs text-gray-300">
-        表示中: {filteredStores.filter((s) => s.visible).length} /{" "}
-        {filteredStores.length} 店舗
-      </div>
-    </>
-  );
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // no-op
+    }
 
-  // デスクトップサイドバー内容 (スライダー含む)
-  const desktopSidebar = (
-    <>
-      <div className="flex items-center gap-2 border-b border-gray-200 p-3">
-        <button
-          type="button"
-          onClick={() => setActiveTab("home")}
-          className="cursor-pointer"
-        >
-          <img src="/logo.png" alt="Wagamama Gourmet" className="h-8" />
-        </button>
-        <SearchBar className="min-w-0 flex-1" compact />
-      </div>
+    const onMove = (moveEvent: PointerEvent) => {
+      if (activePointerIdRef.current !== moveEvent.pointerId) return;
+      if (dragStartYRef.current === null) return;
+      const viewportHeight = window.innerHeight;
+      const minHeight = getLevelHeightPx("closed", viewportHeight);
+      const maxHeight = getLevelHeightPx("topPeek", viewportHeight);
+      const delta = moveEvent.clientY - dragStartYRef.current;
+      const nextHeight = Math.max(
+        minHeight,
+        Math.min(maxHeight, dragStartHeightRef.current - delta)
+      );
+      setMobileDragHeight(nextHeight);
+    };
 
-      <div className="flex flex-col gap-4 px-4 py-3">
-        <h2 className="text-lg font-bold text-gray-900">モードで探す</h2>
-        <PresetButtons onSelect={applyPreset} />
+    const finishDrag = (upEvent: PointerEvent) => {
+      if (activePointerIdRef.current !== null && activePointerIdRef.current !== upEvent.pointerId) {
+        return;
+      }
 
-        <h2 className="text-lg font-bold text-gray-900">ジャンルから探す</h2>
-        <GenrePresets
-          selectedGenre={selectedGenre}
-          onGenreSelect={setSelectedGenre}
-        />
-      </div>
+      const startY = dragStartYRef.current;
+      activePointerIdRef.current = null;
+      dragStartYRef.current = null;
+      setIsDraggingSheet(false);
+      setMobileDragHeight(null);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", finishDrag);
+      window.removeEventListener("pointercancel", finishDrag);
 
-      <SliderGroup weights={weights} onChange={updateWeight} />
+      if (startY === null) return;
 
-      {loading && (
-        <div className="p-4 text-sm text-gray-400">読み込み中...</div>
-      )}
-      {error && (
-        <div className="p-4 text-sm text-red-500">
-          データ取得エラー: {error}
-        </div>
-      )}
-      {rankingSection}
-      <div className="mt-auto p-4 text-xs text-gray-300">
-        表示中: {filteredStores.filter((s) => s.visible).length} /{" "}
-        {filteredStores.length} 店舗
-      </div>
-    </>
-  );
+      const delta = upEvent.clientY - startY;
+      const viewportHeight = window.innerHeight;
+      const minHeight = getLevelHeightPx("closed", viewportHeight);
+      const maxHeight = getLevelHeightPx("topPeek", viewportHeight);
+
+      const draggedHeight = Math.max(
+        minHeight,
+        Math.min(maxHeight, dragStartHeightRef.current - delta)
+      );
+
+      const nearestLevel = MOBILE_SHEET_LEVELS.reduce((nearest, candidate) => {
+        const nearestDiff = Math.abs(
+          draggedHeight - getLevelHeightPx(nearest, viewportHeight)
+        );
+        const candidateDiff = Math.abs(
+          draggedHeight - getLevelHeightPx(candidate, viewportHeight)
+        );
+        return candidateDiff < nearestDiff ? candidate : nearest;
+      }, "half" as MobileSheetLevel);
+
+      setMobileSheetLevel(nearestLevel);
+    };
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerup", finishDrag, { passive: true });
+    window.addEventListener("pointercancel", finishDrag, { passive: true });
+  };
+
+  const handleSheetTouchStart = (e: ReactTouchEvent<HTMLButtonElement>) => {
+    if (!isMobile) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    dragStartYRef.current = touch.clientY;
+    dragStartHeightRef.current = getLevelHeightPx(mobileSheetLevel, window.innerHeight);
+    setMobileDragHeight(dragStartHeightRef.current);
+    setIsDraggingSheet(true);
+
+    const onTouchMove = (moveEvent: TouchEvent) => {
+      const nextTouch = moveEvent.touches[0];
+      if (!nextTouch || dragStartYRef.current === null) return;
+      moveEvent.preventDefault();
+
+      const viewportHeight = window.innerHeight;
+      const minHeight = getLevelHeightPx("closed", viewportHeight);
+      const maxHeight = getLevelHeightPx("topPeek", viewportHeight);
+      const delta = nextTouch.clientY - dragStartYRef.current;
+      const nextHeight = Math.max(
+        minHeight,
+        Math.min(maxHeight, dragStartHeightRef.current - delta)
+      );
+      setMobileDragHeight(nextHeight);
+    };
+
+    const onTouchEnd = (endEvent: TouchEvent) => {
+      const startY = dragStartYRef.current;
+
+      dragStartYRef.current = null;
+      setIsDraggingSheet(false);
+      setMobileDragHeight(null);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+
+      if (startY === null) return;
+
+      const changed = endEvent.changedTouches[0];
+      if (!changed) return;
+
+      const delta = changed.clientY - startY;
+      const viewportHeight = window.innerHeight;
+      const minHeight = getLevelHeightPx("closed", viewportHeight);
+      const maxHeight = getLevelHeightPx("topPeek", viewportHeight);
+
+      const draggedHeight = Math.max(
+        minHeight,
+        Math.min(maxHeight, dragStartHeightRef.current - delta)
+      );
+
+      const nearestLevel = MOBILE_SHEET_LEVELS.reduce((nearest, candidate) => {
+        const nearestDiff = Math.abs(
+          draggedHeight - getLevelHeightPx(nearest, viewportHeight)
+        );
+        const candidateDiff = Math.abs(
+          draggedHeight - getLevelHeightPx(candidate, viewportHeight)
+        );
+        return candidateDiff < nearestDiff ? candidate : nearest;
+      }, "half" as MobileSheetLevel);
+
+      setMobileSheetLevel(nearestLevel);
+    };
+
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+  };
+
+  useEffect(() => {
+    if (!selectedStore) return;
+    const exists = filteredStoresWithScore.some((s) => s.id === selectedStore.id);
+    if (!exists) setSelectedStore(null);
+  }, [filteredStoresWithScore, selectedStore]);
+
+  const visibleCount = rankedStores.length;
+  const allZero = Object.values(weights).every((v) => v === 0);
+  const isDummyMode = !import.meta.env.VITE_API_URL;
+  const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
+
+  const mobileSheetHeightClass =
+    mobileSheetLevel === "topPeek"
+        ? "h-[88%]"
+        : mobileSheetLevel === "half"
+          ? "h-[56%]"
+          : "h-[92px]";
+
+  const clampWeight = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+
+  const buildOptimizedWeights = (input: string, detectedMode: string | null): Weights => {
+    if (detectedMode && MODE_TO_PRESET[detectedMode]) {
+      return MODE_TO_PRESET[detectedMode];
+    }
+
+    const text = input.toLowerCase();
+    const next: Weights = { ...weights };
+
+    if (/(安い|コスパ|節約|予算|金欠)/.test(text)) next.price += 32;
+    if (/(駅近|近い|アクセス|歩き|移動)/.test(text)) next.access += 28;
+    if (/(評価|高評価|レビュー|口コミ|うまい|美味)/.test(text)) next.rating += 26;
+    if (/(デート|おしゃれ|雰囲気|映え|落ち着)/.test(text)) next.vibe += 30;
+    if (/(早い|急ぎ|サクッ|すぐ|時短|待たない)/.test(text)) next.speed += 34;
+    if (/(ゆっくり|長居|まったり)/.test(text)) next.speed -= 24;
+
+    return {
+      price: clampWeight(next.price),
+      access: clampWeight(next.access),
+      rating: clampWeight(next.rating),
+      vibe: clampWeight(next.vibe),
+      speed: clampWeight(next.speed),
+    };
+  };
+
+  const handleAIOptimize = async () => {
+    const message = wishInput.trim();
+    if (!message || isOptimizing) return;
+
+    setIsOptimizing(true);
+    try {
+      const history: ChatMessage[] = [];
+      const response = await sendChatMessage({
+        message,
+        history,
+        context: {
+          selectedGenre: selectedGenre === "すべて" ? null : selectedGenre,
+          topStoreNames: rankedStores.slice(0, 3).map((s) => s.name),
+          weights,
+        },
+      });
+
+      const nextWeights = buildOptimizedWeights(message, response.detected_mode);
+      applyPreset(nextWeights);
+      setAiAdvice(response.assistant_message);
+
+      if (isMobile) {
+        setMobileTab("list");
+        setMobileSheetLevel("half");
+      }
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
 
   return (
-    <div className="flex h-dvh w-screen flex-col overflow-hidden md:flex-row">
-      {/* ===== デスクトップ: 左パネル (md以上で表示) ===== */}
-      <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white md:flex">
-        {desktopSidebar}
-      </aside>
+    <div className="relative h-screen w-screen bg-slate-100">
+      <header className="absolute inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4">
+        <div className="mx-auto flex max-w-6xl items-center gap-3">
+          <img
+            src="/WagamamaGourmetLogo.png"
+            alt="Wagamama Gourmet"
+            className="h-10 w-auto shrink-0 object-contain"
+          />
 
-      {/* ===== モバイル: ロゴヘッダー (全タブ共通) ===== */}
-      <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-3 py-2 md:hidden">
-        <button
-          type="button"
-          onClick={() => setActiveTab("home")}
-          className="shrink-0 cursor-pointer"
-        >
-          <img src="/logo.png" alt="Wagamama Gourmet" className="h-8" />
-        </button>
-        <SearchBar className="min-w-0 flex-1" compact />
-      </div>
-
-      {/* ===== コンテンツ領域 ===== */}
-      <div className="relative flex-1 overflow-hidden">
-        {/* --- ホームタブ (モバイルのみ) --- */}
-        <div
-          className={`absolute inset-0 overflow-y-auto bg-white ${activeTab === "home" ? "z-10 visible" : "z-0 invisible"
-            } md:hidden`}
-        >
-          {homeContent}
-        </div>
-
-        {/* --- 地図 + スライダードロワー (モバイル) --- */}
-        <div
-          className={`absolute inset-0 touch-none ${activeTab === "map" ? "z-10 visible" : "z-0 invisible"
-            } md:relative md:inset-auto md:z-auto md:visible md:h-full`}
-        >
-          <MapView stores={filteredStores} />
-          {/* モバイル: 地図上のスライダードロワー */}
-          <div className="touch-auto md:hidden">
-            <SliderDrawer weights={weights} onChange={updateWeight} />
+          <div className="flex w-full items-center gap-2 rounded-[28px] border-2 border-black bg-slate-100 px-4 py-2 shadow-[0_4px_0_0_rgba(0,0,0,1)]">
+            <span className="text-xl">🔍</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="「激安で満腹になりたい！」"
+              className="w-full bg-transparent text-base font-semibold outline-none placeholder:text-slate-400"
+            />
+            <button
+              type="button"
+              className="ml-1 shrink-0 rounded-full border-2 border-black bg-orange-500 px-4 py-2 text-base font-black text-white shadow-[0_2px_0_0_rgba(0,0,0,1)] transition-transform hover:scale-105 active:translate-y-0.5"
+            >
+              GO!
+            </button>
           </div>
         </div>
+      </header>
 
-        {/* --- チャットタブ (モバイルのみ) --- */}
-        <div
-          className={`absolute inset-0 ${activeTab === "chat" ? "z-10 visible" : "z-0 invisible"
-            } md:hidden`}
-        >
-          <ChatPlaceholder />
+      <div className="flex h-[calc(100vh-68px)] pt-[68px] md:flex-row">
+      {/* --- 左パネル --- */}
+      <aside
+        ref={panelRef}
+        style={
+          isMobile && mobileDragHeight !== null
+            ? { height: `${mobileDragHeight}px`, transitionDuration: "0ms" }
+            : undefined
+        }
+        className={`z-20 order-2 flex w-full shrink-0 flex-col overflow-y-auto bg-slate-50 transition-all duration-300 md:order-1 md:h-full md:w-[390px] md:border-r md:border-t-0 ${
+          isMobile
+            ? `absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.18)] ${mobileSheetHeightClass}`
+            : "h-full border-t"
+        }`}
+      >
+        {isMobile && (
+          <button
+            onPointerDown={handleSheetPointerDown}
+            onTouchStart={handleSheetTouchStart}
+            className={`sticky top-0 z-30 flex w-full items-center justify-center bg-white/95 pt-2 backdrop-blur ${
+              isDraggingSheet ? "cursor-grabbing" : "cursor-grab"
+            } min-h-12 pb-2 touch-none select-none`}
+            aria-label="パネル高さを切り替え"
+          >
+            <span className="h-1.5 w-16 rounded-full bg-slate-300" />
+          </button>
+        )}
+
+        <div className="sticky top-0 z-20 border-b border-slate-200 bg-white p-4 backdrop-blur">
+
+          {showMobileBody && (
+            <>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {genres.map((genre) => (
+                  <button
+                    key={genre}
+                    onClick={() => setSelectedGenre(genre)}
+                    className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
+                      selectedGenre === genre
+                        ? "border-black bg-black text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    {genre}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {isDummyMode && (
+            <p className="mt-2 text-[11px] font-medium text-slate-500">※ ダミーデータで表示中</p>
+          )}
+
+          {isMobile && (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  setMobileTab("controls");
+                  setMobileSheetLevel("topPeek");
+                }}
+                className={`flex items-center justify-center gap-2 rounded-3xl border-[3px] px-4 py-3 text-sm font-black shadow-[0_5px_0_0_rgba(0,0,0,1)] transition-all ${
+                  mobileTab === "controls"
+                    ? "border-black bg-black text-white"
+                    : "border-black bg-slate-100 text-black"
+                }`}
+              >
+                <SlidersHorizontal size={18} strokeWidth={3} />
+                調整
+              </button>
+              <button
+                onClick={() => {
+                  setMobileTab("list");
+                  setMobileSheetLevel("half");
+                }}
+                className={`flex items-center justify-center gap-2 rounded-3xl border-[3px] px-4 py-3 text-sm font-black shadow-[0_5px_0_0_rgba(0,0,0,1)] transition-all ${
+                  mobileTab === "list"
+                    ? "border-black bg-black text-white"
+                    : "border-black bg-slate-100 text-black"
+                }`}
+              >
+                <Trophy size={18} strokeWidth={3} />
+                ランキング
+              </button>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* ===== モバイル: ボトムナビ ===== */}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        {showMobileBody ? (
+          <>
+            {(!isMobile || mobileTab === "controls") && (
+              <div className="space-y-3 p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <p className="mb-2 text-xs font-black tracking-wide text-slate-500">
+                    AI 絞り込みアシスト
+                  </p>
+                  <textarea
+                    value={wishInput}
+                    onChange={(e) => setWishInput(e.target.value)}
+                    placeholder="例）駅近で、コスパ良くて、静かめのお店がいい"
+                    className="h-20 w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-300"
+                  />
+                  <button
+                    onClick={handleAIOptimize}
+                    disabled={isOptimizing || !wishInput.trim()}
+                    className="mt-2 w-full rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-black text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {isOptimizing ? "最適化中..." : "絞り込む！"}
+                  </button>
+                  {aiAdvice && (
+                    <p className="mt-2 whitespace-pre-line rounded-xl border border-emerald-100 bg-emerald-50 p-2 text-xs text-emerald-900">
+                      {aiAdvice}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <p className="mb-2 text-xs font-black tracking-wide text-slate-500">クイックモード</p>
+                  <PresetButtons onSelect={applyPreset} onReset={resetWeights} />
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <p className="mb-2 text-xs font-black tracking-wide text-slate-500">こだわりスライダー</p>
+                  <SliderGroup weights={weights} onChange={updateWeight} />
+                </div>
+              </div>
+            )}
+
+            {isMobile && mobileTab === "list" && selectedStore && (
+              <div className="border-t border-slate-200 p-4">
+                <StoreCard store={selectedStore} onClose={() => setSelectedStore(null)} />
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="px-4 pb-4">
+            <button
+              onClick={() => setMobileSheetLevel("topPeek")}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
+            >
+              ⬆ 上にスワイプする感覚でタップして展開
+            </button>
+          </div>
+        )}
+
+        {loading && (
+          <div className="px-4 pb-4 text-sm text-slate-400">読み込み中...</div>
+        )}
+        {error && (
+          <div className="px-4 pb-4 text-sm text-rose-500">
+            データ取得エラー: {error}
+          </div>
+        )}
+
+        {/* --- 選択中の店舗カード --- */}
+        {!isMobile && selectedStore && (
+          <div className="border-t border-slate-200 p-4">
+            <StoreCard
+              store={selectedStore}
+              onClose={() => setSelectedStore(null)}
+            />
+          </div>
+        )}
+
+        {/* --- 全スライダー0のヒント --- */}
+        {!loading && allZero && (
+          <div className="border-t border-slate-200 p-4 text-center text-sm text-slate-400">
+            スライダーを動かして条件を設定しましょう
+          </div>
+        )}
+
+        {/* --- 店舗ランキング --- */}
+        {!loading && rankedStores.length > 0 && (!isMobile || mobileTab === "list") && (
+          <div className="flex flex-col gap-2 border-t border-slate-200 bg-white p-4">
+            <h2 className="mb-1 text-sm font-bold text-slate-600">
+              ランキング（{visibleCount} / {filteredStoresWithScore.length} 店舗）
+            </h2>
+            {rankedStores.map((store, i) => (
+              <button
+                key={store.id}
+                onClick={() => setSelectedStore(store)}
+                className={`relative flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 ${
+                  selectedStore?.id === store.id ? "border-black" : ""
+                }`}
+              >
+                {i < 3 && (
+                  <span className="absolute -left-2 -top-2 rounded-md bg-orange-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+                    TOP {i + 1}
+                  </span>
+                )}
+                <span className="w-5 shrink-0 text-center text-xs font-bold text-slate-400">{i + 1}</span>
+                <span
+                  className="h-3 w-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: store.pinColor }}
+                />
+                <span className="flex-1 truncate font-medium">
+                  {store.name}
+                </span>
+                <span className="shrink-0 rounded-md bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {(store.normalizedScore * 100).toFixed(0)}pt
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </aside>
+
+      {/* --- 地図エリア --- */}
+      <main className="order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
+        <div className="h-full w-full overflow-hidden bg-white md:rounded-2xl md:border md:border-slate-200 md:shadow-sm">
+          <MapView stores={filteredStoresWithScore} />
+        </div>
+      </main>
+
+      </div>
     </div>
   );
 }

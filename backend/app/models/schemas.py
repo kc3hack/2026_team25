@@ -4,6 +4,8 @@
 # C は import して参照のみ
 # ============================================
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -56,3 +58,34 @@ class ScoreResponse(BaseModel):
     """POST /api/stores/score のレスポンス"""
 
     scores: list[ScoreItem]
+
+
+class ChatMessageSchema(BaseModel):
+    """チャットメッセージ"""
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=1000)
+
+
+class ChatContextSchema(BaseModel):
+    """チャット補助コンテキスト"""
+
+    selected_genre: str | None = None
+    top_store_names: list[str] = Field(default_factory=list)
+    weights: WeightsSchema | None = None
+
+
+class ChatRequest(BaseModel):
+    """POST /api/chat のリクエスト"""
+
+    message: str = Field(min_length=1, max_length=500)
+    history: list[ChatMessageSchema] = Field(default_factory=list)
+    context: ChatContextSchema | None = None
+
+
+class ChatResponse(BaseModel):
+    """POST /api/chat のレスポンス"""
+
+    assistant_message: str
+    suggested_queries: list[str] = Field(default_factory=list)
+    detected_mode: str | None = None

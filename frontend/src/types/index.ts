@@ -62,3 +62,28 @@ export const WEIGHT_LABELS: Record<keyof Weights, string> = {
   vibe: "雰囲気",
   speed: "スピード",
 };
+
+export type ChatRole = "user" | "assistant";
+
+export interface ChatMessage {
+  role: ChatRole;
+  content: string;
+}
+
+export interface ChatContext {
+  selectedGenre?: string | null;
+  topStoreNames?: string[];
+  weights?: Weights;
+}
+
+export interface ChatRequest {
+  message: string;
+  history: ChatMessage[];
+  context?: ChatContext;
+}
+
+export interface ChatResponse {
+  assistant_message: string;
+  suggested_queries: string[];
+  detected_mode: string | null;
+}
