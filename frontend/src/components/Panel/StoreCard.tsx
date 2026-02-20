@@ -83,9 +83,10 @@ export default function StoreCard({ store, onClose }: StoreCardProps) {
         {onClose && (
           <button
             onClick={onClose}
-            className="rounded-full border-2 border-black bg-white px-2 text-sm font-black text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
+            aria-label="店舗詳細を閉じる"
+            className="inline-flex h-11 min-w-11 items-center justify-center rounded-full border-2 border-black bg-white px-2 text-sm font-black text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
           >
-            x
+            ×
           </button>
         )}
       </div>

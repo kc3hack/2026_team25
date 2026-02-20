@@ -17,7 +17,7 @@ import { SliderGroup, PresetButtons, StoreCard } from "./components/Panel";
 import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
 import { fetchStores, sendChatMessage } from "./lib/api";
-import { SlidersHorizontal, Trophy } from "lucide-react";
+import { ChevronUp, Search as SearchIcon, SlidersHorizontal, Trophy } from "lucide-react";
 import {
   PRESETS,
   type ChatMessage,
@@ -68,6 +68,7 @@ function App() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const { weights, updateWeight, applyPreset, resetWeights } = useWeights();
   const panelRef = useRef<HTMLElement | null>(null);
+  const rankingSectionRef = useRef<HTMLDivElement | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragStartHeightRef = useRef<number>(0);
   const activePointerIdRef = useRef<number | null>(null);
@@ -281,6 +282,7 @@ function App() {
 
   const visibleCount = rankedStores.length;
   const allZero = Object.values(weights).every((v) => v === 0);
+  const hasActiveFilters = searchQuery.trim().length > 0 || selectedGenre !== "すべて";
   const isDummyMode = !import.meta.env.VITE_API_URL;
   const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
 
@@ -347,6 +349,23 @@ function App() {
     }
   };
 
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSearchQuery((prev) => prev.trim());
+
+    if (isMobile) {
+      setMobileTab("list");
+      setMobileSheetLevel("half");
+    }
+
+    rankingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedGenre("すべて");
+  };
+
   return (
     <div className="relative h-screen w-screen bg-slate-100">
       <header className="absolute inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4">
@@ -357,9 +376,16 @@ function App() {
             className="h-10 w-auto shrink-0 object-contain"
           />
 
-          <div className="flex w-full items-center gap-2 rounded-[28px] border-2 border-black bg-slate-100 px-4 py-2 shadow-[0_4px_0_0_rgba(0,0,0,1)]">
-            <span className="text-xl">🔍</span>
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex w-full items-center gap-2 rounded-[28px] border-2 border-black bg-slate-100 px-4 py-2 shadow-[0_4px_0_0_rgba(0,0,0,1)]"
+          >
+            <label htmlFor="global-store-search" className="sr-only">
+              店舗名またはジャンルで検索
+            </label>
+            <SearchIcon size={20} className="shrink-0 text-slate-700" aria-hidden="true" />
             <input
+              id="global-store-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -367,12 +393,13 @@ function App() {
               className="w-full bg-transparent text-base font-semibold outline-none placeholder:text-slate-400"
             />
             <button
-              type="button"
-              className="ml-1 shrink-0 rounded-full border-2 border-black bg-orange-500 px-4 py-2 text-base font-black text-white shadow-[0_2px_0_0_rgba(0,0,0,1)] transition-transform hover:scale-105 active:translate-y-0.5"
+              type="submit"
+              aria-label="検索を適用してランキングへ移動"
+              className="ml-1 inline-flex min-h-11 shrink-0 items-center rounded-full border-2 border-black bg-orange-500 px-4 py-2 text-base font-black text-white shadow-[0_2px_0_0_rgba(0,0,0,1)] transition-transform hover:scale-105 active:translate-y-0.5"
             >
               GO!
             </button>
-          </div>
+          </form>
         </div>
       </header>
 
@@ -413,7 +440,7 @@ function App() {
                   <button
                     key={genre}
                     onClick={() => setSelectedGenre(genre)}
-                    className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
+                    className={`min-h-11 shrink-0 cursor-pointer rounded-full border px-3 py-2 text-xs font-bold transition-colors ${
                       selectedGenre === genre
                         ? "border-black bg-black text-white"
                         : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -469,10 +496,11 @@ function App() {
             {(!isMobile || mobileTab === "controls") && (
               <div className="space-y-3 p-4">
                 <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                  <p className="mb-2 text-xs font-black tracking-wide text-slate-500">
+                  <label htmlFor="wish-input" className="mb-2 block text-xs font-black tracking-wide text-slate-500">
                     AI 絞り込みアシスト
-                  </p>
+                  </label>
                   <textarea
+                    id="wish-input"
                     value={wishInput}
                     onChange={(e) => setWishInput(e.target.value)}
                     placeholder="例）駅近で、コスパ良くて、静かめのお店がいい"
@@ -513,9 +541,10 @@ function App() {
           <div className="px-4 pb-4">
             <button
               onClick={() => setMobileSheetLevel("topPeek")}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
             >
-              ⬆ 上にスワイプする感覚でタップして展開
+              <ChevronUp size={16} aria-hidden="true" />
+              <span>上にスワイプする感覚でタップして展開</span>
             </button>
           </div>
         )}
@@ -546,9 +575,31 @@ function App() {
           </div>
         )}
 
+        {!loading && !allZero && rankedStores.length === 0 && (!isMobile || mobileTab === "list") && (
+          <div className="border-t border-slate-200 bg-white p-4 text-center">
+            <p className="text-sm font-semibold text-slate-700">
+              条件に合う店舗が見つかりませんでした
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              検索キーワードやジャンルを緩めると見つかりやすくなります。
+            </p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                検索条件をリセット
+              </button>
+            )}
+          </div>
+        )}
+
         {/* --- 店舗ランキング --- */}
         {!loading && rankedStores.length > 0 && (!isMobile || mobileTab === "list") && (
-          <div className="flex flex-col gap-2 border-t border-slate-200 bg-white p-4">
+          <div
+            ref={rankingSectionRef}
+            className="flex flex-col gap-2 border-t border-slate-200 bg-white p-4"
+          >
             <h2 className="mb-1 text-sm font-bold text-slate-600">
               ランキング（{visibleCount} / {filteredStoresWithScore.length} 店舗）
             </h2>
