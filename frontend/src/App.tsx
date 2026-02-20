@@ -453,16 +453,6 @@ function App() {
                 </div>
               )}
 
-              {isMobile && mobileTab === "list" && selectedStore && (
-                <div className="border-t border-slate-200 p-4">
-                  <StoreCard
-                    store={selectedStore}
-                    isFavorite={favoriteIds.has(selectedStore.id)}
-                    onToggleFavorite={() => toggleFavorite(selectedStore.id)}
-                    onClose={() => setSelectedStore(null)}
-                  />
-                </div>
-              )}
             </>
           ) : (
             <div className="px-4 pb-4">
@@ -484,18 +474,6 @@ function App() {
             </div>
           )}
 
-          {/* --- 選択中の店舗カード --- */}
-          {!isMobile && selectedStore && (
-            <div className="border-t border-slate-200 p-4">
-              <StoreCard
-                store={selectedStore}
-                isFavorite={favoriteIds.has(selectedStore.id)}
-                onToggleFavorite={() => toggleFavorite(selectedStore.id)}
-                onClose={() => setSelectedStore(null)}
-              />
-            </div>
-          )}
-
           {/* --- 全スライダー0のヒント --- */}
           {!loading && allZero && (
             <div className="border-t border-slate-200 p-4 text-center text-sm text-slate-400">
@@ -509,31 +487,45 @@ function App() {
               <h2 className="mb-1 text-sm font-bold text-slate-600">
                 ランキング（{visibleCount} / {filteredStoresWithScore.length} 店舗）
               </h2>
-              {rankedStores.map((store, i) => (
-                <button
-                  key={store.id}
-                  onClick={() => setSelectedStore(store)}
-                  className={`relative flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 ${selectedStore?.id === store.id ? "border-black" : ""
-                    }`}
-                >
-                  {i < 3 && (
-                    <span className="absolute -left-2 -top-2 rounded-md bg-orange-500 px-1.5 py-0.5 text-[9px] font-black text-white">
-                      TOP {i + 1}
-                    </span>
-                  )}
-                  <span className="w-5 shrink-0 text-center text-xs font-bold text-slate-400">{i + 1}</span>
-                  <span
-                    className="h-3 w-3 shrink-0 rounded-full"
-                    style={{ backgroundColor: store.pinColor }}
-                  />
-                  <span className="flex-1 truncate font-medium">
-                    {store.name}
-                  </span>
-                  <span className="shrink-0 rounded-md bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                    {(store.normalizedScore * 100).toFixed(0)}pt
-                  </span>
-                </button>
-              ))}
+              {rankedStores.map((store, i) => {
+                const isSelected = selectedStore?.id === store.id;
+
+                return (
+                  <div key={store.id} className="space-y-2">
+                    <button
+                      onClick={() => setSelectedStore(store)}
+                      className={`relative flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 ${isSelected ? "border-black" : ""
+                        }`}
+                    >
+                      {i < 3 && (
+                        <span className="absolute -left-2 -top-2 rounded-md bg-orange-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+                          TOP {i + 1}
+                        </span>
+                      )}
+                      <span className="w-5 shrink-0 text-center text-xs font-bold text-slate-400">{i + 1}</span>
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full"
+                        style={{ backgroundColor: store.pinColor }}
+                      />
+                      <span className="flex-1 truncate font-medium">
+                        {store.name}
+                      </span>
+                      <span className="shrink-0 rounded-md bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {(store.normalizedScore * 100).toFixed(0)}pt
+                      </span>
+                    </button>
+
+                    {isSelected && (
+                      <StoreCard
+                        store={store}
+                        isFavorite={favoriteIds.has(store.id)}
+                        onToggleFavorite={() => toggleFavorite(store.id)}
+                        onClose={() => setSelectedStore(null)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </aside>
