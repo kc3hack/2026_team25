@@ -46,17 +46,13 @@ def build_chat_response(payload: ChatRequest) -> ChatResponse:
     mode = _detect_mode(payload.message, weights_dict)
     mode_label = _MODE_LABELS[mode]
 
-    lines: list[str] = [
-        f"了解です。いまの相談は『{mode_label}モード』寄りで考えるのがよさそうです。",
-        _build_mode_advice(mode),
-    ]
-
-    if payload.context and payload.context.selected_genre:
-        lines.append(f"ジャンルは『{payload.context.selected_genre}』を軸に探しましょう。")
+    lines: list[str] = []
 
     if payload.context and payload.context.top_store_names:
         top_names = payload.context.top_store_names[:3]
-        lines.append(f"現在の候補上位は {', '.join(top_names)} です。")
+        lines.append(f"ご要望に沿ったおすすめのお店top3は{', '.join(top_names)}です。")
+    else:
+        lines.append("ご要望に沿ったおすすめ候補を選定します。")
 
     lines.append("気になる条件（予算・利用シーン・移動時間）を1つ追加してくれたら、さらに絞り込みます。")
 

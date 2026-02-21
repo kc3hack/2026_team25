@@ -26,16 +26,13 @@ export default function ProfileView({ favoriteStores, onOpenStore, onUnfavorite 
                                 key={store.id}
                                 className="rounded-2xl border-2 border-black bg-white px-3 py-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
                             >
-                                <div className="mb-2 flex items-center justify-between gap-2">
+                                <div className="mb-2 flex items-center gap-2">
                                     <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-gray-600">{store.genre}</p>
                                         <p className="truncate text-sm font-black text-black">
                                             {index + 1}. {store.name}
                                         </p>
-                                        <p className="text-xs font-semibold text-gray-600">{store.genre}</p>
                                     </div>
-                                    <span className="shrink-0 rounded-md bg-black px-2 py-0.5 text-[10px] font-black text-white">
-                                        {(store.normalizedScore * 100).toFixed(0)}pt
-                                    </span>
                                 </div>
 
                                 <div className="flex gap-2">

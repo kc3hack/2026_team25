@@ -13,6 +13,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type TouchEvent as ReactTouchEvent,
 } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import BottomNav, { type Tab } from "./components/Panel/BottomNav";
 import MapView from "./components/Map/MapView";
 import ChatPlaceholder from "./components/Panel/ChatPlaceholder";
@@ -24,6 +25,7 @@ import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
 import { fetchStores } from "./lib/api";
 import {
+  PRESETS,
   type Store,
   type StoreWithScore,
   type Weights,
@@ -148,7 +150,11 @@ function App() {
     () =>
       [...filteredStoresWithScore]
         .filter((s) => s.visible)
-        .sort((a, b) => b.normalizedScore - a.normalizedScore),
+        .sort((a, b) => {
+          const scoreDiff = b.normalizedScore - a.normalizedScore;
+          if (Math.abs(scoreDiff) > Number.EPSILON) return scoreDiff;
+          return a.id.localeCompare(b.id);
+        }),
     [filteredStoresWithScore]
   );
 
@@ -159,6 +165,21 @@ function App() {
         .sort((a, b) => b.normalizedScore - a.normalizedScore),
     [storesWithScore, favoriteIds]
   );
+
+  const rankedStoresWithRank = useMemo(() => {
+    let prevPoint: number | null = null;
+    let prevRank = 0;
+
+    return rankedStores.map((store, index) => {
+      const point = Number((store.normalizedScore * 100).toFixed(0));
+      const rank = prevPoint === point ? prevRank : index + 1;
+
+      prevPoint = point;
+      prevRank = rank;
+
+      return { store, rank, point };
+    });
+  }, [rankedStores]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -338,8 +359,16 @@ function App() {
     if (!exists) setSelectedStore(null);
   }, [filteredStoresWithScore, selectedStore]);
 
-  const visibleCount = rankedStores.length;
   const allZero = Object.values(weights).every((v) => v === 0);
+  const activePresetName = useMemo(() => {
+    const presetEntries = Object.entries(PRESETS) as Array<[string, Weights]>;
+    const matched = presetEntries.find(([, preset]) =>
+      (Object.keys(preset) as (keyof Weights)[]).every(
+        (key) => weights[key] === preset[key]
+      )
+    );
+    return matched?.[0] ?? null;
+  }, [weights]);
   const showHomeGenreBar = !isMobile || activeTab === "home";
   const homeTopOffset = topBarHeight + (showHomeGenreBar ? GENRE_BAR_HEIGHT : 0);
   const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
@@ -372,6 +401,51 @@ function App() {
       }
     },
     [applyPreset, isMobile]
+  );
+
+  const handleShowRankingWithWeights = useCallback(
+    (nextWeights: Weights) => {
+      applyPreset(nextWeights);
+      setSelectedStore(null);
+      setActiveTab("home");
+      if (isMobile) {
+        setMobileTab("list");
+        setMobileSheetLevel("half");
+      }
+      rankingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [applyPreset, isMobile]
+  );
+
+  const handleOpenStoreFromMap = useCallback(
+    (storeId: string) => {
+      const target = filteredStoresWithScore.find((store) => store.id === storeId);
+      if (!target) return;
+
+      setSelectedStore(target);
+      setActiveTab("home");
+      if (isMobile) {
+        setMobileTab("list");
+        setMobileSheetLevel("half");
+      }
+    },
+    [filteredStoresWithScore, isMobile]
+  );
+
+  const handleQuickModeSelect = useCallback(
+    (presetWeights: Weights) => {
+      const isSamePreset = (Object.keys(presetWeights) as (keyof Weights)[]).every(
+        (key) => weights[key] === presetWeights[key]
+      );
+
+      if (isSamePreset) {
+        resetWeights();
+        return;
+      }
+
+      applyPreset(presetWeights);
+    },
+    [weights, applyPreset, resetWeights]
   );
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -487,10 +561,9 @@ function App() {
               <button
                 onClick={() => {
                   setMobileTab("controls");
-                  setMobileSheetLevel("half");
                 }}
                 type="button"
-                className={`col-start-1 z-10 justify-self-start rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
+                className={`col-start-1 z-10 w-[70%] justify-self-center rounded-3xl border-[3px] px-3 py-1 text-center text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
                   ? "border-black bg-black text-white"
                   : "border-black bg-slate-100 text-black"
                   }`}
@@ -512,10 +585,9 @@ function App() {
               <button
                 onClick={() => {
                   setMobileTab("list");
-                  setMobileSheetLevel("half");
                 }}
                 type="button"
-                className={`col-start-3 z-10 justify-self-end rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
+                className={`col-start-3 z-10 w-[70%] justify-self-center rounded-3xl border-[3px] px-3 py-1 text-center text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
                   ? "border-black bg-black text-white"
                   : "border-black bg-slate-100 text-black"
                   }`}
@@ -530,8 +602,20 @@ function App() {
               {(!isMobile || mobileTab === "controls") && (
                 <div className="space-y-3 p-4">
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <p className="mb-2 text-xs font-black tracking-wide text-slate-500">クイックモード</p>
-                    <PresetButtons onSelect={applyPreset} onReset={resetWeights} />
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-black tracking-wide text-slate-500">クイックモード</p>
+                      <button
+                        type="button"
+                        onClick={resetWeights}
+                        className="inline-flex min-h-11 items-center rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                      >
+                        リセット
+                      </button>
+                    </div>
+                    <PresetButtons
+                      onSelect={handleQuickModeSelect}
+                      activePresetName={activePresetName}
+                    />
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                     <p className="mb-2 text-xs font-black tracking-wide text-slate-500">こだわりスライダー</p>
@@ -563,30 +647,31 @@ function App() {
           )}
 
           {/* --- 店舗ランキング --- */}
-          {!loading && rankedStores.length > 0 && (!isMobile || mobileTab === "list") && (
+          {!loading && rankedStores.length > 0 && (!isMobile || (mobileTab === "list" && mobileSheetLevel !== "closed")) && (
             <div
               ref={rankingSectionRef}
               className="flex flex-col gap-2 border-t border-slate-200 bg-white p-4"
             >
-              <h2 className="mb-1 text-sm font-bold text-slate-600">
-                ランキング（{visibleCount} / {filteredStoresWithScore.length} 店舗）
-              </h2>
-              {rankedStores.map((store, i) => {
+              {rankedStoresWithRank.map(({ store, rank, point }) => {
                 const isSelected = selectedStore?.id === store.id;
 
                 return (
                   <div key={store.id} className="space-y-2">
                     <button
-                      onClick={() => setSelectedStore(store)}
+                      onClick={() =>
+                        setSelectedStore((prev) =>
+                          prev?.id === store.id ? null : store
+                        )
+                      }
                       className={`relative flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 ${isSelected ? "border-black" : ""
                         }`}
                     >
-                      {i < 3 && (
+                      {rank <= 3 && (
                         <span className="absolute -left-2 -top-2 rounded-md bg-orange-500 px-1.5 py-0.5 text-[9px] font-black text-white">
-                          TOP {i + 1}
+                          TOP {rank}
                         </span>
                       )}
-                      <span className="w-5 shrink-0 text-center text-xs font-bold text-slate-400">{i + 1}</span>
+                      <span className="w-5 shrink-0 text-center text-xs font-bold text-slate-400">{rank}</span>
                       <span
                         className="h-3 w-3 shrink-0 rounded-full"
                         style={{ backgroundColor: store.pinColor }}
@@ -595,18 +680,27 @@ function App() {
                         {store.name}
                       </span>
                       <span className="shrink-0 rounded-md bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                        {(store.normalizedScore * 100).toFixed(0)}pt
+                        {point}pt
                       </span>
                     </button>
 
-                    {isSelected && (
-                      <StoreCard
-                        store={store}
-                        isFavorite={favoriteIds.has(store.id)}
-                        onToggleFavorite={() => toggleFavorite(store.id)}
-                        onClose={() => setSelectedStore(null)}
-                      />
-                    )}
+                    <AnimatePresence initial={false}>
+                      {isSelected && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.2, ease: "easeOut" }}
+                        >
+                          <StoreCard
+                            store={store}
+                            isFavorite={favoriteIds.has(store.id)}
+                            onToggleFavorite={() => toggleFavorite(store.id)}
+                            onClose={() => setSelectedStore(null)}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               })}
@@ -621,6 +715,14 @@ function App() {
               stores={filteredStoresWithScore}
               favoriteIds={favoriteIds}
               onToggleFavorite={toggleFavorite}
+              onOpenDetails={handleOpenStoreFromMap}
+              selectedStoreId={selectedStore?.id ?? null}
+              topRankedStores={rankedStoresWithRank
+                .filter(({ rank }) => rank <= 3)
+                .map(({ store, rank }) => ({
+                  storeId: store.id,
+                  rank: rank as 1 | 2 | 3,
+                }))}
             />
           </div>
         </main>
@@ -638,6 +740,7 @@ function App() {
             topStoreNames={rankedStores.slice(0, 3).map((store) => store.name)}
             weights={weights}
             onSelectSuggestion={handleSelectSuggestedStore}
+            onShowRankingWithWeights={handleShowRankingWithWeights}
           />
         </section>
       )}

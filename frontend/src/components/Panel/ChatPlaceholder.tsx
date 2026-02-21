@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Send } from "lucide-react";
+import { motion } from "framer-motion";
 
 import { sendChatMessage } from "../../lib/api";
 import { calculateScores } from "../../lib/scoreEngine";
@@ -11,7 +12,15 @@ type Props = {
   topStoreNames: string[];
   weights: Weights;
   onSelectSuggestion: (store: StoreWithScore, nextWeights: Weights) => void;
+  onShowRankingWithWeights: (nextWeights: Weights) => void;
   onInputFocusChange?: (focused: boolean) => void;
+};
+
+const CHAT_STATE_STORAGE_KEY = "wagamama-chat-state";
+const INITIAL_ASSISTANT_MESSAGE: ChatMessage = {
+  role: "assistant",
+  content:
+    "こんにちは。条件を教えてくれたら、お店選びを一緒に絞り込みます。\n例: 『安くて駅近の店がいい』",
 };
 
 const MODE_TO_PRESET: Record<string, Weights> = {
@@ -54,20 +63,66 @@ export default function ChatPlaceholder({
   topStoreNames,
   weights,
   onSelectSuggestion,
+  onShowRankingWithWeights,
   onInputFocusChange,
 }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "こんにちは。条件を教えてくれたら、お店選びを一緒に絞り込みます。\n例: 『安くて駅近の店がいい』",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window === "undefined") {
+      return [INITIAL_ASSISTANT_MESSAGE];
+    }
+    try {
+      const raw = window.sessionStorage.getItem(CHAT_STATE_STORAGE_KEY);
+      if (!raw) {
+        return [INITIAL_ASSISTANT_MESSAGE];
+      }
+      const parsed = JSON.parse(raw) as {
+        messages?: ChatMessage[];
+      };
+      if (Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+        return parsed.messages;
+      }
+    } catch {
+      // ignore corrupted cache
+    }
+    return [INITIAL_ASSISTANT_MESSAGE];
+  });
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [suggestedStores, setSuggestedStores] = useState<StoreWithScore[]>([]);
-  const [lastWeights, setLastWeights] = useState<Weights | null>(null);
+  const [suggestedStores, setSuggestedStores] = useState<StoreWithScore[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+    try {
+      const raw = window.sessionStorage.getItem(CHAT_STATE_STORAGE_KEY);
+      if (!raw) {
+        return [];
+      }
+      const parsed = JSON.parse(raw) as {
+        suggestedStores?: StoreWithScore[];
+      };
+      return Array.isArray(parsed.suggestedStores) ? parsed.suggestedStores : [];
+    } catch {
+      return [];
+    }
+  });
+  const [lastWeights, setLastWeights] = useState<Weights | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    try {
+      const raw = window.sessionStorage.getItem(CHAT_STATE_STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw) as {
+        lastWeights?: Weights | null;
+      };
+      return parsed.lastWeights ?? null;
+    } catch {
+      return null;
+    }
+  });
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const canSend = useMemo(() => input.trim().length > 0 && !sending, [input, sending]);
@@ -81,6 +136,16 @@ export default function ChatPlaceholder({
   const postMessage = async (text: string) => {
     const userMessage: ChatMessage = { role: "user", content: text };
     const nextMessages = [...messages, userMessage];
+    const nextWeights = buildOptimizedWeights(text, null, weights);
+    const nextTop3 = calculateScores(stores, nextWeights)
+      .filter((store) => store.visible)
+      .sort((a, b) => b.normalizedScore - a.normalizedScore)
+      .slice(0, 3);
+    const contextTopStoreNames =
+      nextTop3.length > 0
+        ? nextTop3.map((store) => store.name)
+        : suggestedStores.slice(0, 3).map((store) => store.name);
+
     setMessages(nextMessages);
     setInput("");
     setSending(true);
@@ -93,8 +158,8 @@ export default function ChatPlaceholder({
         history: nextMessages,
         context: {
           selectedGenre,
-          topStoreNames,
-          weights,
+          topStoreNames: contextTopStoreNames,
+          weights: nextWeights,
         },
       });
 
@@ -106,14 +171,10 @@ export default function ChatPlaceholder({
         },
       ]);
 
-      const nextWeights = buildOptimizedWeights(text, response.detected_mode, weights);
-      const top3 = calculateScores(stores, nextWeights)
-        .filter((store) => store.visible)
-        .sort((a, b) => b.normalizedScore - a.normalizedScore)
-        .slice(0, 3);
-
-      setLastWeights(nextWeights);
-      setSuggestedStores(top3);
+      if (nextTop3.length > 0) {
+        setLastWeights(nextWeights);
+        setSuggestedStores(nextTop3);
+      }
     } catch {
       setError("返信の取得に失敗しました。少し待って再試行してください。");
     } finally {
@@ -130,26 +191,57 @@ export default function ChatPlaceholder({
     await postMessage(input.trim());
   };
 
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        CHAT_STATE_STORAGE_KEY,
+        JSON.stringify({
+          messages,
+          suggestedStores,
+          lastWeights,
+        })
+      );
+    } catch {
+      // ignore storage write errors
+    }
+  }, [messages, suggestedStores, lastWeights]);
+
   return (
     <div className="flex h-full flex-col bg-[#FDFBF7]">
       <header className="border-b-2 border-black bg-[#FDFBF7] px-4 pt-4 pb-3">
         <h2 className="text-base leading-snug font-black text-black">AIチャット</h2>
-        <p className="text-xs font-semibold text-gray-600">条件を伝えると、候補の絞り込み方を提案します。</p>
+        <p className="text-xs font-semibold text-gray-600">要望を伝えると、それに沿ったお店top3を提案します。</p>
       </header>
 
       <div className="flex-1 overflow-y-auto px-3 py-3">
         <div className="mx-auto flex max-w-2xl flex-col gap-2">
-          {messages.map((message, index) => (
-            <div
-              key={`${message.role}-${index}`}
-              className={`max-w-[85%] rounded-2xl border-2 border-black px-3 py-2 text-sm whitespace-pre-wrap shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${message.role === "user"
-                ? "ml-auto bg-[#FF6B35] font-semibold text-white"
-                : "mr-auto bg-white text-gray-800"
-                }`}
-            >
-              {message.content}
-            </div>
-          ))}
+          {messages.map((message, index) => {
+            const key = `${message.role}-${index}`;
+            const className = `max-w-[85%] rounded-2xl border-2 border-black px-3 py-2 text-sm whitespace-pre-wrap shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${message.role === "user"
+              ? "ml-auto bg-[#FF6B35] font-semibold text-white"
+              : "mr-auto bg-white text-gray-800"
+              }`;
+
+            if (message.role === "assistant") {
+              return (
+                <motion.div
+                  key={key}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className={className}
+                >
+                  {message.content}
+                </motion.div>
+              );
+            }
+
+            return (
+              <div key={key} className={className}>
+                {message.content}
+              </div>
+            );
+          })}
 
           {sending && (
             <div className="mr-auto flex items-center gap-2 rounded-2xl border-2 border-black bg-white px-3 py-2 text-xs font-semibold text-gray-600 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
@@ -186,6 +278,17 @@ export default function ChatPlaceholder({
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!lastWeights) return;
+                  onShowRankingWithWeights(lastWeights);
+                }}
+                disabled={!lastWeights}
+                className="mt-3 w-full rounded-xl border-2 border-black bg-[#FF6B35] px-3 py-2 text-xs font-black text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:shadow-none"
+              >
+                要望に沿った条件でランキングを表示
+              </button>
             </div>
           )}
 
