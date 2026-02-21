@@ -4,10 +4,8 @@
 // ============================================
 
 import {
-  Suspense,
   useCallback,
   useEffect,
-  lazy,
   useMemo,
   useRef,
   useState,
@@ -16,13 +14,15 @@ import {
   type TouchEvent as ReactTouchEvent,
 } from "react";
 import BottomNav, { type Tab } from "./components/Panel/BottomNav";
+import MapView from "./components/Map/MapView";
+import ChatPlaceholder from "./components/Panel/ChatPlaceholder";
+import ProfileView from "./components/Panel/ProfileView";
 import PresetButtons from "./components/Panel/PresetButtons";
 import SliderGroup from "./components/Panel/SliderGroup";
 import StoreCard from "./components/Panel/StoreCard";
 import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
 import { fetchStores } from "./lib/api";
-import { SlidersHorizontal, Trophy } from "lucide-react";
 import {
   type Store,
   type StoreWithScore,
@@ -31,6 +31,7 @@ import {
 
 type MobileSheetLevel = "topPeek" | "half" | "closed";
 const TOP_BAR_HEIGHT = 68;
+const GENRE_BAR_HEIGHT = 52;
 
 const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "topPeek",
@@ -44,8 +45,8 @@ function getLevelHeightPx(
   topBarHeight: number
 ): number {
   const availableHeight = Math.max(280, viewportHeight - topBarHeight);
-  if (level === "topPeek") return availableHeight * 0.88;
-  if (level === "half") return availableHeight * 0.56;
+  if (level === "topPeek") return availableHeight * 0.34;
+  if (level === "half") return availableHeight * 0.26;
   return 92;
 }
 
@@ -69,6 +70,8 @@ function App() {
   const [keyboardInset, setKeyboardInset] = useState(0);
   const { weights, updateWeight, applyPreset, resetWeights } = useWeights();
   const panelRef = useRef<HTMLElement | null>(null);
+  const rankingSectionRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragStartHeightRef = useRef<number>(0);
   const activePointerIdRef = useRef<number | null>(null);
@@ -334,13 +337,14 @@ function App() {
   const isDummyMode = !import.meta.env.VITE_API_URL;
   const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
   const bottomNavOffset = isMobile && activeTab === "chat" ? keyboardInset : 0;
-  const chatSectionBottom = 56 + bottomNavOffset;
+  const showHomeGenreBar = !isMobile || activeTab === "home";
+  const homeTopOffset = topBarHeight + (showHomeGenreBar ? GENRE_BAR_HEIGHT : 0);
 
   const mobileSheetHeightClass =
     mobileSheetLevel === "topPeek"
-      ? "h-[88%]"
+      ? "h-[34%]"
       : mobileSheetLevel === "half"
-        ? "h-[56%]"
+        ? "h-[26%]"
         : "h-[92px]";
 
   const toggleFavorite = useCallback((storeId: string) => {
@@ -431,10 +435,32 @@ function App() {
         </div>
       </header>
 
+      {showHomeGenreBar && (
+        <section
+          style={{ top: `${topBarHeight}px` }}
+          className="absolute inset-x-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur"
+        >
+          <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto pb-1">
+            {genres.map((genre) => (
+              <button
+                key={genre}
+                onClick={() => setSelectedGenre(genre)}
+                className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${selectedGenre === genre
+                  ? "border-black bg-black text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+              >
+                {genre}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div
         style={{
-          paddingTop: `${topBarHeight}px`,
-          height: `calc(100vh - ${topBarHeight}px)`,
+          paddingTop: `${homeTopOffset}px`,
+          height: `calc(100vh - ${homeTopOffset}px)`,
         }}
         className={`flex md:flex-row ${isMobile && activeTab !== "home" ? "hidden" : ""}`}
       >
@@ -452,71 +478,49 @@ function App() {
             }`}
         >
           {isMobile && (
-            <button
-              onPointerDown={handleSheetPointerDown}
-              onTouchStart={handleSheetTouchStart}
-              className={`sticky top-0 z-30 flex w-full items-center justify-center bg-white/95 pt-2 backdrop-blur ${isDraggingSheet ? "cursor-grabbing" : "cursor-grab"
-                } min-h-12 pb-2 touch-none select-none`}
-              aria-label="パネル高さを切り替え"
-            >
-              <span className="h-1.5 w-16 rounded-full bg-slate-300" />
-            </button>
+            <div className="sticky top-0 z-30 grid min-h-12 grid-cols-[1fr_auto_1fr] items-center gap-2 bg-white/95 px-3 pb-2 pt-2 backdrop-blur">
+              <button
+                onClick={() => {
+                  setMobileTab("controls");
+                  setMobileSheetLevel("topPeek");
+                }}
+                className={`justify-self-start rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
+                  ? "border-black bg-black text-white"
+                  : "border-black bg-slate-100 text-black"
+                  }`}
+              >
+                調整
+              </button>
+
+              <button
+                onPointerDown={handleSheetPointerDown}
+                onTouchStart={handleSheetTouchStart}
+                className={`flex items-center justify-center ${isDraggingSheet ? "cursor-grabbing" : "cursor-grab"
+                  } touch-none select-none`}
+                aria-label="パネル高さを切り替え"
+              >
+                <span className="h-1.5 w-16 rounded-full bg-slate-300" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setMobileTab("list");
+                  setMobileSheetLevel("half");
+                }}
+                className={`justify-self-end rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
+                  ? "border-black bg-black text-white"
+                  : "border-black bg-slate-100 text-black"
+                  }`}
+              >
+                ランキング
+              </button>
+            </div>
           )}
 
           <div className="sticky top-0 z-20 border-b border-slate-200 bg-white p-4 backdrop-blur">
 
-            {showMobileBody && (
-              <>
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {genres.map((genre) => (
-                    <button
-                      key={genre}
-                      onClick={() => setSelectedGenre(genre)}
-                      className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold transition-colors ${selectedGenre === genre
-                        ? "border-black bg-black text-white"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                        }`}
-                    >
-                      {genre}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
             {isDummyMode && (
               <p className="mt-2 text-[11px] font-medium text-slate-500">※ ダミーデータで表示中</p>
-            )}
-
-            {isMobile && (
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => {
-                    setMobileTab("controls");
-                    setMobileSheetLevel("topPeek");
-                  }}
-                  className={`flex items-center justify-center gap-2 rounded-3xl border-[3px] px-4 py-3 text-sm font-black shadow-[0_5px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
-                    ? "border-black bg-black text-white"
-                    : "border-black bg-slate-100 text-black"
-                    }`}
-                >
-                  <SlidersHorizontal size={18} strokeWidth={3} />
-                  調整
-                </button>
-                <button
-                  onClick={() => {
-                    setMobileTab("list");
-                    setMobileSheetLevel("half");
-                  }}
-                  className={`flex items-center justify-center gap-2 rounded-3xl border-[3px] px-4 py-3 text-sm font-black shadow-[0_5px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
-                    ? "border-black bg-black text-white"
-                    : "border-black bg-slate-100 text-black"
-                    }`}
-                >
-                  <Trophy size={18} strokeWidth={3} />
-                  ランキング
-                </button>
-              </div>
             )}
           </div>
 
@@ -618,19 +622,11 @@ function App() {
         {/* --- 地図エリア --- */}
         <main className="order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
           <div className="h-full w-full overflow-hidden bg-white md:rounded-2xl md:border md:border-slate-200 md:shadow-sm">
-            <Suspense
-              fallback={
-                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-500">
-                  地図を読み込み中...
-                </div>
-              }
-            >
-              <LazyMapView
-                stores={filteredStoresWithScore}
-                favoriteIds={favoriteIds}
-                onToggleFavorite={toggleFavorite}
-              />
-            </Suspense>
+            <MapView
+              stores={filteredStoresWithScore}
+              favoriteIds={favoriteIds}
+              onToggleFavorite={toggleFavorite}
+            />
           </div>
         </main>
 
