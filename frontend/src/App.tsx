@@ -29,12 +29,13 @@ import {
   type Weights,
 } from "./types";
 
-type MobileSheetLevel = "topPeek" | "half" | "closed";
+type MobileSheetLevel = "full" | "half" | "closed";
 const TOP_BAR_HEIGHT = 68;
 const GENRE_BAR_HEIGHT = 52;
+const BOTTOM_NAV_HEIGHT = 56;
 
 const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
-  "topPeek",
+  "full",
   "half",
   "closed",
 ];
@@ -42,11 +43,14 @@ const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
 function getLevelHeightPx(
   level: MobileSheetLevel,
   viewportHeight: number,
-  topBarHeight: number
+  contentTopOffset: number
 ): number {
-  const availableHeight = Math.max(280, viewportHeight - topBarHeight);
-  if (level === "topPeek") return availableHeight * 0.34;
-  if (level === "half") return availableHeight * 0.26;
+  const maxHeight = Math.max(
+    260,
+    viewportHeight - contentTopOffset - BOTTOM_NAV_HEIGHT
+  );
+  if (level === "full") return maxHeight;
+  if (level === "half") return Math.max(168, maxHeight * 0.28);
   return 92;
 }
 
@@ -164,7 +168,7 @@ function App() {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       if (!mobile) {
-        setMobileSheetLevel("topPeek");
+        setMobileSheetLevel("half");
         setActiveTab("home");
       } else {
         setMobileSheetLevel("half");
@@ -184,7 +188,7 @@ function App() {
     dragStartHeightRef.current = getLevelHeightPx(
       mobileSheetLevel,
       window.innerHeight,
-      topBarHeight
+      homeTopOffset
     );
     setMobileDragHeight(dragStartHeightRef.current);
     setIsDraggingSheet(true);
@@ -199,8 +203,8 @@ function App() {
       if (activePointerIdRef.current !== moveEvent.pointerId) return;
       if (dragStartYRef.current === null) return;
       const viewportHeight = window.innerHeight;
-      const minHeight = getLevelHeightPx("closed", viewportHeight, topBarHeight);
-      const maxHeight = getLevelHeightPx("topPeek", viewportHeight, topBarHeight);
+      const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
+      const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
       const delta = moveEvent.clientY - dragStartYRef.current;
       const nextHeight = Math.max(
         minHeight,
@@ -227,8 +231,8 @@ function App() {
 
       const delta = upEvent.clientY - startY;
       const viewportHeight = window.innerHeight;
-      const minHeight = getLevelHeightPx("closed", viewportHeight, topBarHeight);
-      const maxHeight = getLevelHeightPx("topPeek", viewportHeight, topBarHeight);
+      const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
+      const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
 
       const draggedHeight = Math.max(
         minHeight,
@@ -237,10 +241,10 @@ function App() {
 
       const nearestLevel = MOBILE_SHEET_LEVELS.reduce((nearest, candidate) => {
         const nearestDiff = Math.abs(
-          draggedHeight - getLevelHeightPx(nearest, viewportHeight, topBarHeight)
+          draggedHeight - getLevelHeightPx(nearest, viewportHeight, homeTopOffset)
         );
         const candidateDiff = Math.abs(
-          draggedHeight - getLevelHeightPx(candidate, viewportHeight, topBarHeight)
+          draggedHeight - getLevelHeightPx(candidate, viewportHeight, homeTopOffset)
         );
         return candidateDiff < nearestDiff ? candidate : nearest;
       }, "half" as MobileSheetLevel);
@@ -262,7 +266,7 @@ function App() {
     dragStartHeightRef.current = getLevelHeightPx(
       mobileSheetLevel,
       window.innerHeight,
-      topBarHeight
+      homeTopOffset
     );
     setMobileDragHeight(dragStartHeightRef.current);
     setIsDraggingSheet(true);
@@ -273,8 +277,8 @@ function App() {
       moveEvent.preventDefault();
 
       const viewportHeight = window.innerHeight;
-      const minHeight = getLevelHeightPx("closed", viewportHeight, topBarHeight);
-      const maxHeight = getLevelHeightPx("topPeek", viewportHeight, topBarHeight);
+      const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
+      const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
       const delta = nextTouch.clientY - dragStartYRef.current;
       const nextHeight = Math.max(
         minHeight,
@@ -300,8 +304,8 @@ function App() {
 
       const delta = changed.clientY - startY;
       const viewportHeight = window.innerHeight;
-      const minHeight = getLevelHeightPx("closed", viewportHeight, topBarHeight);
-      const maxHeight = getLevelHeightPx("topPeek", viewportHeight, topBarHeight);
+      const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
+      const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
 
       const draggedHeight = Math.max(
         minHeight,
@@ -310,10 +314,10 @@ function App() {
 
       const nearestLevel = MOBILE_SHEET_LEVELS.reduce((nearest, candidate) => {
         const nearestDiff = Math.abs(
-          draggedHeight - getLevelHeightPx(nearest, viewportHeight, topBarHeight)
+          draggedHeight - getLevelHeightPx(nearest, viewportHeight, homeTopOffset)
         );
         const candidateDiff = Math.abs(
-          draggedHeight - getLevelHeightPx(candidate, viewportHeight, topBarHeight)
+          draggedHeight - getLevelHeightPx(candidate, viewportHeight, homeTopOffset)
         );
         return candidateDiff < nearestDiff ? candidate : nearest;
       }, "half" as MobileSheetLevel);
@@ -335,17 +339,13 @@ function App() {
   const visibleCount = rankedStores.length;
   const allZero = Object.values(weights).every((v) => v === 0);
   const isDummyMode = !import.meta.env.VITE_API_URL;
-  const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
-  const bottomNavOffset = isMobile && activeTab === "chat" ? keyboardInset : 0;
   const showHomeGenreBar = !isMobile || activeTab === "home";
   const homeTopOffset = topBarHeight + (showHomeGenreBar ? GENRE_BAR_HEIGHT : 0);
-
-  const mobileSheetHeightClass =
-    mobileSheetLevel === "topPeek"
-      ? "h-[34%]"
-      : mobileSheetLevel === "half"
-        ? "h-[26%]"
-        : "h-[92px]";
+  const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
+  const bottomNavOffset = isMobile && activeTab === "chat" ? keyboardInset : 0;
+  const mobileSheetHeightPx = isMobile
+    ? getLevelHeightPx(mobileSheetLevel, window.innerHeight, homeTopOffset)
+    : null;
 
   const toggleFavorite = useCallback((storeId: string) => {
     setFavoriteIds((prev) => {
@@ -468,12 +468,15 @@ function App() {
         <aside
           ref={panelRef}
           style={
-            isMobile && mobileDragHeight !== null
-              ? { height: `${mobileDragHeight}px`, transitionDuration: "0ms" }
+            isMobile
+              ? {
+                height: `${mobileDragHeight ?? mobileSheetHeightPx}px`,
+                transitionDuration: mobileDragHeight !== null ? "0ms" : undefined,
+              }
               : undefined
           }
           className={`z-20 order-2 flex w-full shrink-0 flex-col overflow-y-auto bg-slate-50 transition-all duration-300 md:order-1 md:h-full md:w-[390px] md:border-r md:border-t-0 ${isMobile
-            ? `absolute bottom-14 left-0 right-0 rounded-t-3xl border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.18)] ${mobileSheetHeightClass}`
+            ? "absolute bottom-14 left-0 right-0 rounded-t-3xl border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.18)]"
             : "h-full border-t"
             }`}
         >
@@ -482,7 +485,7 @@ function App() {
               <button
                 onClick={() => {
                   setMobileTab("controls");
-                  setMobileSheetLevel("topPeek");
+                  setMobileSheetLevel("half");
                 }}
                 type="button"
                 className={`col-start-1 z-10 justify-self-start rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
@@ -546,7 +549,7 @@ function App() {
           ) : (
             <div className="px-4 pb-4">
               <button
-                onClick={() => setMobileSheetLevel("topPeek")}
+                onClick={() => setMobileSheetLevel("half")}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
               >
                 ⬆ 上にスワイプする感覚でタップして展開
