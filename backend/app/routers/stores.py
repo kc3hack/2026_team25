@@ -46,17 +46,29 @@ def _load_seed_stores() -> list[dict]:
         return []
 
 
+def _ensure_access_metadata(stores: list[dict]) -> list[dict]:
+    normalized: list[dict] = []
+    for store in stores:
+        item = dict(store)
+        item.setdefault("walk_duration_sec", None)
+        item.setdefault("walk_distance_m", None)
+        item.setdefault("access_source", "legacy")
+        item.setdefault("access_updated_at", None)
+        normalized.append(item)
+    return normalized
+
+
 @router.get("/stores", response_model=StoreResponse)
 async def get_stores():
     """全店舗データを返却する"""
     try:
         response = supabase.table("stores").select("*").execute()
-        stores = response.data or []
+        stores = _ensure_access_metadata(response.data or [])
         logger.info("GET /stores: returned %d stores from database", len(stores))
         return StoreResponse(stores=stores)
     except Exception:
         logger.exception("GET /stores: database access failed, trying fallback")
-        fallback_stores = _load_seed_stores()
+        fallback_stores = _ensure_access_metadata(_load_seed_stores())
         if fallback_stores:
             logger.info("GET /stores: returned %d stores from seed fallback", len(fallback_stores))
             return StoreResponse(stores=fallback_stores)

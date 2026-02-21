@@ -4,24 +4,21 @@
 // ============================================
 
 import {
+  Suspense,
   useCallback,
   useEffect,
+  lazy,
   useMemo,
   useRef,
   useState,
+  type FormEvent,
   type PointerEvent as ReactPointerEvent,
   type TouchEvent as ReactTouchEvent,
 } from "react";
-import { MapView } from "./components/Map";
-import {
-  BottomNav,
-  ChatPlaceholder,
-  PresetButtons,
-  ProfileView,
-  SliderGroup,
-  StoreCard,
-  type Tab,
-} from "./components/Panel";
+import BottomNav, { type Tab } from "./components/Panel/BottomNav";
+import PresetButtons from "./components/Panel/PresetButtons";
+import SliderGroup from "./components/Panel/SliderGroup";
+import StoreCard from "./components/Panel/StoreCard";
 import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
 import { fetchStores } from "./lib/api";
@@ -33,7 +30,7 @@ import {
 } from "./types";
 
 type MobileSheetLevel = "topPeek" | "half" | "closed";
-const TOP_BAR_HEIGHT = 76;
+const TOP_BAR_HEIGHT = 68;
 
 const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "topPeek",
@@ -72,7 +69,6 @@ function App() {
   const [keyboardInset, setKeyboardInset] = useState(0);
   const { weights, updateWeight, applyPreset, resetWeights } = useWeights();
   const panelRef = useRef<HTMLElement | null>(null);
-  const headerRef = useRef<HTMLElement | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragStartHeightRef = useRef<number>(0);
   const activePointerIdRef = useRef<number | null>(null);
@@ -372,6 +368,18 @@ function App() {
     [applyPreset, isMobile]
   );
 
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSearchQuery((prev) => prev.trim());
+
+    if (isMobile) {
+      setMobileTab("list");
+      setMobileSheetLevel("half");
+    }
+
+    rankingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div className="relative h-screen w-screen bg-slate-100">
       <header
@@ -396,9 +404,16 @@ function App() {
             />
           </button>
 
-          <div className="flex w-full items-center gap-2 rounded-[28px] border-2 border-black bg-slate-100 px-4 py-2 shadow-[0_4px_0_0_rgba(0,0,0,1)]">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex w-full items-center gap-2 rounded-[28px] border-2 border-black bg-slate-100 px-4 py-2 shadow-[0_4px_0_0_rgba(0,0,0,1)]"
+          >
+            <label htmlFor="store-search" className="sr-only">
+              店舗名またはジャンルで検索
+            </label>
             <span className="text-xl">🔍</span>
             <input
+              id="store-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -406,12 +421,13 @@ function App() {
               className="w-full bg-transparent text-base font-semibold outline-none placeholder:text-slate-400"
             />
             <button
-              type="button"
+              type="submit"
+              aria-label="検索を実行"
               className="ml-1 shrink-0 rounded-full border-2 border-black bg-orange-500 px-4 py-2 text-base font-black text-white shadow-[0_2px_0_0_rgba(0,0,0,1)] transition-transform hover:scale-105 active:translate-y-0.5"
             >
               GO!
             </button>
-          </div>
+          </form>
         </div>
       </header>
 
@@ -549,7 +565,10 @@ function App() {
 
           {/* --- 店舗ランキング --- */}
           {!loading && rankedStores.length > 0 && (!isMobile || mobileTab === "list") && (
-            <div className="flex flex-col gap-2 border-t border-slate-200 bg-white p-4">
+            <div
+              ref={rankingSectionRef}
+              className="flex flex-col gap-2 border-t border-slate-200 bg-white p-4"
+            >
               <h2 className="mb-1 text-sm font-bold text-slate-600">
                 ランキング（{visibleCount} / {filteredStoresWithScore.length} 店舗）
               </h2>
@@ -599,24 +618,26 @@ function App() {
         {/* --- 地図エリア --- */}
         <main className="order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
           <div className="h-full w-full overflow-hidden bg-white md:rounded-2xl md:border md:border-slate-200 md:shadow-sm">
-            <MapView
-              stores={filteredStoresWithScore}
-              favoriteIds={favoriteIds}
-              onToggleFavorite={toggleFavorite}
-            />
+            <Suspense
+              fallback={
+                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-500">
+                  地図を読み込み中...
+                </div>
+              }
+            >
+              <LazyMapView
+                stores={filteredStoresWithScore}
+                favoriteIds={favoriteIds}
+                onToggleFavorite={toggleFavorite}
+              />
+            </Suspense>
           </div>
         </main>
 
       </div>
 
       {isMobile && activeTab === "chat" && (
-        <section
-          style={{
-            top: `${topBarHeight}px`,
-            bottom: `${chatSectionBottom}px`,
-          }}
-          className="absolute inset-x-0 z-30"
-        >
+        <section className="absolute inset-x-0 bottom-14 top-[68px] z-30">
           <ChatPlaceholder
             stores={stores}
             selectedGenre={selectedGenre === "すべて" ? null : selectedGenre}
@@ -628,10 +649,7 @@ function App() {
       )}
 
       {isMobile && activeTab === "profile" && (
-        <section
-          style={{ top: `${topBarHeight}px` }}
-          className="absolute inset-x-0 bottom-14 z-30"
-        >
+        <section className="absolute inset-x-0 bottom-14 top-[68px] z-30">
           <ProfileView
             favoriteStores={favoriteStores}
             onOpenStore={(store) => {

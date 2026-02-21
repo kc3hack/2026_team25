@@ -114,7 +114,7 @@ export default function ChatPlaceholder({
 
       setLastWeights(nextWeights);
       setSuggestedStores(top3);
-    } catch (_err) {
+    } catch {
       setError("返信の取得に失敗しました。少し待って再試行してください。");
     } finally {
       setSending(false);
@@ -195,20 +195,25 @@ export default function ChatPlaceholder({
 
       <form onSubmit={onSubmit} className="border-t-2 border-black bg-[#FDFBF7] p-3">
         <div className="mx-auto flex max-w-2xl items-center gap-2">
+          <label htmlFor="chat-message-input" className="sr-only">
+            AIチャットに送るメッセージ
+          </label>
           <input
+            id="chat-message-input"
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onFocus={() => onInputFocusChange?.(true)}
             onBlur={() => onInputFocusChange?.(false)}
             placeholder="例: 2人で静かに話せる、駅近の店"
-            className="h-10 flex-1 rounded-xl border-2 border-black bg-white px-3 text-base font-semibold outline-none"
+            className="h-10 flex-1 rounded-xl border-2 border-black bg-white px-3 text-sm font-semibold outline-none"
             maxLength={300}
             disabled={sending}
           />
           <button
             type="submit"
             disabled={!canSend}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border-2 border-black bg-[#FF6B35] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:shadow-none"
+            aria-label="メッセージを送信"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-black bg-[#FF6B35] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:shadow-none"
           >
             <Send size={16} />
           </button>

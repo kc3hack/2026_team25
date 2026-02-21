@@ -35,7 +35,11 @@
       "lng": 135.7467,
       "genre": "ラーメン",
       "price_score": 0.9,
-      "access_score": 0.8,
+      "access_score": 0.95,
+      "walk_duration_sec": 180,
+      "walk_distance_m": 210,
+      "access_source": "google_routes_krp_walk",
+      "access_updated_at": "2026-02-20T01:23:45Z",
       "rating_score": 0.7,
       "vibe_score": 0.3,
       "speed_score": 0.9
@@ -43,6 +47,9 @@
   ]
 }
 ```
+
+`access_score` は KRP会場（`34.9937, 135.7467`）起点の徒歩ルート事前計算値。  
+`walk_duration_sec` / `walk_distance_m` は評価根拠の実測値です。
 
 ---
 

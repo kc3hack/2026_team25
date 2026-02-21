@@ -13,6 +13,10 @@ export interface Store {
   genre: string;
   price_score: number;    // 0.0-1.0 価格のお手頃さ（1.0 = 激安）
   access_score: number;   // 0.0-1.0 アクセスの良さ（1.0 = 駅直結レベル）
+  walk_duration_sec?: number;
+  walk_distance_m?: number;
+  access_source?: string;
+  access_updated_at?: string;
   rating_score: number;   // 0.0-1.0 口コミ評価（1.0 = 最高評価）
   vibe_score: number;     // 0.0-1.0 雰囲気（1.0 = デート最適）
   speed_score: number;    // 0.0-1.0 提供速度（1.0 = 爆速）

@@ -3,8 +3,14 @@
 // 【B専任】このファイルは B のみが編集する
 // ============================================
 
-import type { StoreWithScore } from "../../types";
+import { useState } from "react";
 import { WEIGHT_LABELS } from "../../types";
+import type { StoreWithScore } from "../../types";
+import {
+  TRAVEL_MODE_OPTIONS,
+  type TravelMode,
+  openDirectionsInGoogleMaps,
+} from "../../lib/navigation";
 
 interface StoreCardProps {
   store: StoreWithScore | null;
@@ -70,16 +76,45 @@ const SVG_PAD = 28;
 const SVG_VIEWBOX_MIN = -SVG_PAD;
 const SVG_VIEWBOX_SIZE = CHART_SIZE + SVG_PAD * 2;
 
+function formatWalkDuration(seconds?: number): string | null {
+  if (seconds === undefined || seconds === null || seconds < 0) return null;
+  const mins = Math.round(seconds / 60);
+  return `${mins}分`;
+}
+
+function formatWalkDistance(meters?: number): string | null {
+  if (meters === undefined || meters === null || meters < 0) return null;
+  if (meters < 1000) return `${meters}m`;
+  return `${(meters / 1000).toFixed(1)}km`;
+}
+
 export default function StoreCard({
   store,
   isFavorite = false,
   onToggleFavorite,
   onClose,
 }: StoreCardProps) {
+  const [travelMode, setTravelMode] = useState<TravelMode>("walking");
+  const [isNavigating, setIsNavigating] = useState(false);
+  const handleNavigate = async () => {
+    if (!store || isNavigating) return;
+    setIsNavigating(true);
+    try {
+      await openDirectionsInGoogleMaps({
+        destination: { lat: store.lat, lng: store.lng },
+        mode: travelMode,
+      });
+    } finally {
+      setIsNavigating(false);
+    }
+  };
+
   if (!store) return null;
 
   const values = SCORE_KEYS.map((k) => store[k]);
-  const googleMapsDirectionUrl = `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}&travelmode=walking`;
+  const travelModeSelectId = `travel-mode-${store.id}`;
+  const walkDurationLabel = formatWalkDuration(store.walk_duration_sec);
+  const walkDistanceLabel = formatWalkDistance(store.walk_distance_m);
 
   return (
     <div className="rounded-2xl border-2 border-black bg-[#FDFBF7] p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -91,7 +126,7 @@ export default function StoreCard({
               <button
                 onClick={onToggleFavorite}
                 aria-label={isFavorite ? "お気に入り解除" : "お気に入り登録"}
-                className="shrink-0 rounded-full border-2 border-black bg-white px-2 py-0.5 text-base leading-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
+                className="inline-flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full border-2 border-black bg-white px-2 py-0.5 text-base leading-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
               >
                 {isFavorite ? "★" : "☆"}
               </button>
@@ -102,9 +137,10 @@ export default function StoreCard({
         {onClose && (
           <button
             onClick={onClose}
-            className="rounded-full border-2 border-black bg-white px-2 text-sm font-black text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
+            aria-label="店舗詳細を閉じる"
+            className="inline-flex h-11 min-w-11 items-center justify-center rounded-full border-2 border-black bg-white px-2 text-sm font-black text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
           >
-            x
+            ×
           </button>
         )}
       </div>
@@ -119,12 +155,40 @@ export default function StoreCard({
         </span>
       </div>
 
+      {(walkDurationLabel || walkDistanceLabel) && (
+        <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+          KRP起点の徒歩目安:
+          {walkDurationLabel ? ` ${walkDurationLabel}` : ""}
+          {walkDurationLabel && walkDistanceLabel ? " / " : ""}
+          {walkDistanceLabel ?? ""}
+        </p>
+      )}
+
+      <div className="mt-3 grid gap-1">
+        <label htmlFor={travelModeSelectId} className="text-xs font-bold text-slate-600">
+          移動手段
+        </label>
+        <select
+          id={travelModeSelectId}
+          value={travelMode}
+          onChange={(event) => setTravelMode(event.target.value as TravelMode)}
+          className="w-full rounded-lg border-2 border-black bg-white px-3 py-2 text-sm font-semibold text-black"
+        >
+          {TRAVEL_MODE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <button
         type="button"
-        onClick={() => window.open(googleMapsDirectionUrl, "_blank", "noopener,noreferrer")}
+        onClick={handleNavigate}
+        disabled={isNavigating}
         className="mt-3 w-full rounded-xl border-2 border-black bg-[#FF6B35] px-3 py-2 text-sm font-black text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
       >
-        ここにいく
+        {isNavigating ? "道案内を準備中..." : "現在地から道案内"}
       </button>
 
       {/* --- レーダーチャート（五角形） --- */}

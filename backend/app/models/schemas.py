@@ -22,6 +22,10 @@ class StoreSchema(BaseModel):
     rating_score: float = Field(ge=0.0, le=1.0)
     vibe_score: float = Field(ge=0.0, le=1.0)
     speed_score: float = Field(ge=0.0, le=1.0)
+    walk_duration_sec: int | None = Field(default=None, ge=0)
+    walk_distance_m: int | None = Field(default=None, ge=0)
+    access_source: str | None = None
+    access_updated_at: str | None = None
 
 
 class StoreResponse(BaseModel):
