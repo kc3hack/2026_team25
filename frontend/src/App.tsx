@@ -14,7 +14,7 @@ import {
   type TouchEvent as ReactTouchEvent,
 } from "react";
 import BottomNav, { type Tab } from "./components/Panel/BottomNav";
-import MapView from "./components/Map/MapView";
+import MapView from "./components/map/MapView";
 import ChatPlaceholder from "./components/Panel/ChatPlaceholder";
 import ProfileView from "./components/Panel/ProfileView";
 import PresetButtons from "./components/Panel/PresetButtons";
