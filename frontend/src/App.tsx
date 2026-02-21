@@ -484,6 +484,7 @@ function App() {
                   setMobileTab("controls");
                   setMobileSheetLevel("topPeek");
                 }}
+                type="button"
                 className={`justify-self-start rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
                   ? "border-black bg-black text-white"
                   : "border-black bg-slate-100 text-black"
@@ -495,11 +496,12 @@ function App() {
               <button
                 onPointerDown={handleSheetPointerDown}
                 onTouchStart={handleSheetTouchStart}
-                className={`flex items-center justify-center ${isDraggingSheet ? "cursor-grabbing" : "cursor-grab"
+                type="button"
+                className={`relative mx-auto flex h-11 w-[clamp(5.5rem,26vw,8.5rem)] items-center justify-center rounded-full ${isDraggingSheet ? "cursor-grabbing" : "cursor-grab"
                   } touch-none select-none`}
                 aria-label="パネル高さを切り替え"
               >
-                <span className="h-1.5 w-16 rounded-full bg-slate-300" />
+                <span className="pointer-events-none h-1.5 w-16 rounded-full bg-slate-300" />
               </button>
 
               <button
@@ -507,6 +509,7 @@ function App() {
                   setMobileTab("list");
                   setMobileSheetLevel("half");
                 }}
+                type="button"
                 className={`justify-self-end rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
                   ? "border-black bg-black text-white"
                   : "border-black bg-slate-100 text-black"
