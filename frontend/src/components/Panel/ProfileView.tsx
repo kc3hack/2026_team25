@@ -9,8 +9,8 @@ type Props = {
 export default function ProfileView({ favoriteStores, onOpenStore, onUnfavorite }: Props) {
     return (
         <div className="flex h-full flex-col bg-[#FDFBF7]">
-            <header className="border-b-2 border-black bg-[#FDFBF7] px-4 py-3">
-                <h2 className="text-base font-black text-black">プロフィール</h2>
+            <header className="border-b-2 border-black bg-[#FDFBF7] px-4 pt-4 pb-3">
+                <h2 className="text-base leading-snug font-black text-black">プロフィール</h2>
                 <p className="text-xs font-semibold text-gray-600">お気に入りリスト</p>
             </header>
 

@@ -633,7 +633,10 @@ function App() {
       </div>
 
       {isMobile && activeTab === "chat" && (
-        <section className="absolute inset-x-0 bottom-14 top-[68px] z-30">
+        <section
+          style={{ top: `${topBarHeight}px` }}
+          className="absolute inset-x-0 bottom-14 z-30"
+        >
           <ChatPlaceholder
             stores={stores}
             selectedGenre={selectedGenre === "すべて" ? null : selectedGenre}
@@ -645,7 +648,10 @@ function App() {
       )}
 
       {isMobile && activeTab === "profile" && (
-        <section className="absolute inset-x-0 bottom-14 top-[68px] z-30">
+        <section
+          style={{ top: `${topBarHeight}px` }}
+          className="absolute inset-x-0 bottom-14 z-30"
+        >
           <ProfileView
             favoriteStores={favoriteStores}
             onOpenStore={(store) => {

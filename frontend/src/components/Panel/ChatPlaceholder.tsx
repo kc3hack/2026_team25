@@ -132,8 +132,8 @@ export default function ChatPlaceholder({
 
   return (
     <div className="flex h-full flex-col bg-[#FDFBF7]">
-      <header className="border-b-2 border-black bg-[#FDFBF7] px-4 py-3">
-        <h2 className="text-base font-black text-black">AIチャット</h2>
+      <header className="border-b-2 border-black bg-[#FDFBF7] px-4 pt-4 pb-3">
+        <h2 className="text-base leading-snug font-black text-black">AIチャット</h2>
         <p className="text-xs font-semibold text-gray-600">条件を伝えると、候補の絞り込み方を提案します。</p>
       </header>
 
