@@ -14,7 +14,7 @@ import {
   type TouchEvent as ReactTouchEvent,
 } from "react";
 import BottomNav, { type Tab } from "./components/Panel/BottomNav";
-import MapView from "./components/map/MapView";
+import MapView from "./components/Map/MapView";
 import ChatPlaceholder from "./components/Panel/ChatPlaceholder";
 import ProfileView from "./components/Panel/ProfileView";
 import PresetButtons from "./components/Panel/PresetButtons";
@@ -29,13 +29,14 @@ import {
   type Weights,
 } from "./types";
 
-type MobileSheetLevel = "full" | "half" | "closed";
+type MobileSheetLevel = "full" | "mid" | "half" | "closed";
 const TOP_BAR_HEIGHT = 68;
 const GENRE_BAR_HEIGHT = 52;
 const BOTTOM_NAV_HEIGHT = 56;
 
 const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "full",
+  "mid",
   "half",
   "closed",
 ];
@@ -50,6 +51,7 @@ function getLevelHeightPx(
     viewportHeight - contentTopOffset - BOTTOM_NAV_HEIGHT
   );
   if (level === "full") return maxHeight;
+  if (level === "mid") return Math.max(220, maxHeight * 0.5);
   if (level === "half") return Math.max(168, maxHeight * 0.28);
   return 92;
 }
@@ -67,7 +69,7 @@ function App() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
   const [topBarHeight, setTopBarHeight] = useState(TOP_BAR_HEIGHT);
-  const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>("half");
+  const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>("closed");
   const [mobileTab, setMobileTab] = useState<"controls" | "list">("controls");
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const [mobileDragHeight, setMobileDragHeight] = useState<number | null>(null);
@@ -171,7 +173,7 @@ function App() {
         setMobileSheetLevel("half");
         setActiveTab("home");
       } else {
-        setMobileSheetLevel("half");
+        setMobileSheetLevel("closed");
       }
     };
 
@@ -338,7 +340,6 @@ function App() {
 
   const visibleCount = rankedStores.length;
   const allZero = Object.values(weights).every((v) => v === 0);
-  const isDummyMode = !import.meta.env.VITE_API_URL;
   const showHomeGenreBar = !isMobile || activeTab === "home";
   const homeTopOffset = topBarHeight + (showHomeGenreBar ? GENRE_BAR_HEIGHT : 0);
   const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
@@ -346,6 +347,7 @@ function App() {
   const mobileSheetHeightPx = isMobile
     ? getLevelHeightPx(mobileSheetLevel, window.innerHeight, homeTopOffset)
     : null;
+  const mobilePanelLayerClass = isMobile && isDraggingSheet ? "z-[70]" : "z-20";
 
   const toggleFavorite = useCallback((storeId: string) => {
     setFavoriteIds((prev) => {
@@ -388,7 +390,7 @@ function App() {
     <div className="relative h-screen w-screen bg-slate-100">
       <header
         ref={headerRef}
-        className="absolute inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4"
+        className="absolute inset-x-0 top-0 z-50 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4"
       >
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <button
@@ -438,7 +440,7 @@ function App() {
       {showHomeGenreBar && (
         <section
           style={{ top: `${topBarHeight}px` }}
-          className="absolute inset-x-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur"
+          className="absolute inset-x-0 z-40 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur"
         >
           <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto pb-1">
             {genres.map((genre) => (
@@ -475,13 +477,13 @@ function App() {
               }
               : undefined
           }
-          className={`z-20 order-2 flex w-full shrink-0 flex-col overflow-y-auto bg-slate-50 transition-all duration-300 md:order-1 md:h-full md:w-[390px] md:border-r md:border-t-0 ${isMobile
+          className={`${mobilePanelLayerClass} order-2 flex w-full shrink-0 flex-col overflow-y-auto bg-slate-50 transition-all duration-300 md:order-1 md:h-full md:w-[390px] md:border-r md:border-t-0 ${isMobile
             ? "absolute bottom-14 left-0 right-0 rounded-t-3xl border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.18)]"
             : "h-full border-t"
             }`}
         >
           {isMobile && (
-            <div className="sticky top-0 z-30 grid min-h-12 grid-cols-[1fr_auto_1fr] items-center gap-2 bg-white/95 px-3 pb-2 pt-2 backdrop-blur">
+            <div className="sticky top-0 z-30 grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 bg-white/95 px-3 backdrop-blur">
               <button
                 onClick={() => {
                   setMobileTab("controls");
@@ -523,13 +525,6 @@ function App() {
             </div>
           )}
 
-          <div className="sticky top-0 z-20 border-b border-slate-200 bg-white p-4 backdrop-blur">
-
-            {isDummyMode && (
-              <p className="mt-2 text-[11px] font-medium text-slate-500">※ ダミーデータで表示中</p>
-            )}
-          </div>
-
           {showMobileBody ? (
             <>
               {(!isMobile || mobileTab === "controls") && (
@@ -547,13 +542,7 @@ function App() {
 
             </>
           ) : (
-            <div className="px-4 pb-4">
-              <button
-                onClick={() => setMobileSheetLevel("half")}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
-              >
-                ⬆ 上にスワイプする感覚でタップして展開
-              </button>
+            <div className="h-14 bg-white" aria-hidden="true">
             </div>
           )}
 
@@ -567,7 +556,7 @@ function App() {
           )}
 
           {/* --- 全スライダー0のヒント --- */}
-          {!loading && allZero && (
+          {!loading && allZero && (!isMobile || mobileSheetLevel !== "closed") && (
             <div className="border-t border-slate-200 p-4 text-center text-sm text-slate-400">
               スライダーを動かして条件を設定しましょう
             </div>
@@ -626,7 +615,7 @@ function App() {
         </aside>
 
         {/* --- 地図エリア --- */}
-        <main className="order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
+        <main className="relative z-10 order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
           <div className="h-full w-full overflow-hidden bg-white md:rounded-2xl md:border md:border-slate-200 md:shadow-sm">
             <MapView
               stores={filteredStoresWithScore}

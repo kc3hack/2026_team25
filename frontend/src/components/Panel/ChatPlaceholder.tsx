@@ -205,7 +205,7 @@ export default function ChatPlaceholder({
             onFocus={() => onInputFocusChange?.(true)}
             onBlur={() => onInputFocusChange?.(false)}
             placeholder="例: 2人で静かに話せる、駅近の店"
-            className="h-10 flex-1 rounded-xl border-2 border-black bg-white px-3 text-sm font-semibold outline-none"
+            className="h-10 flex-1 rounded-xl border-2 border-black bg-white px-3 text-base font-semibold outline-none"
             maxLength={300}
             disabled={sending}
           />
