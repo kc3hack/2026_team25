@@ -3,6 +3,8 @@
 # 【C専任】このファイルは C のみが編集する
 # ============================================
 
+import os
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,11 +18,15 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS設定（開発時は全許可、本番では制限する）
+# CORS設定（本番は CORS_ORIGINS に許可オリジンをカンマ区切りで指定）
+origins_env = os.environ.get("CORS_ORIGINS", "*")
+allow_all_origins = origins_env.strip() == "*"
+allowed_origins = ["*"] if allow_all_origins else [origin.strip() for origin in origins_env.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=not allow_all_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

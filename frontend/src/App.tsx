@@ -58,6 +58,11 @@ function getLevelHeightPx(
   return 92;
 }
 
+function getViewportHeightPx(): number {
+  if (typeof window === "undefined") return 0;
+  return window.visualViewport?.height ?? window.innerHeight;
+}
+
 function App() {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,7 +215,7 @@ function App() {
     dragStartYRef.current = e.clientY;
     dragStartHeightRef.current = getLevelHeightPx(
       mobileSheetLevel,
-      window.innerHeight,
+      getViewportHeightPx(),
       homeTopOffset
     );
     setMobileDragHeight(dragStartHeightRef.current);
@@ -225,7 +230,7 @@ function App() {
     const onMove = (moveEvent: PointerEvent) => {
       if (activePointerIdRef.current !== moveEvent.pointerId) return;
       if (dragStartYRef.current === null) return;
-      const viewportHeight = window.innerHeight;
+      const viewportHeight = getViewportHeightPx();
       const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
       const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
       const delta = moveEvent.clientY - dragStartYRef.current;
@@ -253,7 +258,7 @@ function App() {
       if (startY === null) return;
 
       const delta = upEvent.clientY - startY;
-      const viewportHeight = window.innerHeight;
+      const viewportHeight = getViewportHeightPx();
       const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
       const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
 
@@ -288,7 +293,7 @@ function App() {
     dragStartYRef.current = touch.clientY;
     dragStartHeightRef.current = getLevelHeightPx(
       mobileSheetLevel,
-      window.innerHeight,
+      getViewportHeightPx(),
       homeTopOffset
     );
     setMobileDragHeight(dragStartHeightRef.current);
@@ -299,7 +304,7 @@ function App() {
       if (!nextTouch || dragStartYRef.current === null) return;
       moveEvent.preventDefault();
 
-      const viewportHeight = window.innerHeight;
+      const viewportHeight = getViewportHeightPx();
       const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
       const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
       const delta = nextTouch.clientY - dragStartYRef.current;
@@ -326,7 +331,7 @@ function App() {
       if (!changed) return;
 
       const delta = changed.clientY - startY;
-      const viewportHeight = window.innerHeight;
+      const viewportHeight = getViewportHeightPx();
       const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
       const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
 
@@ -374,7 +379,7 @@ function App() {
   const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
   const bottomNavOffset = isMobile && activeTab === "chat" ? keyboardInset : 0;
   const mobileSheetHeightPx = isMobile
-    ? getLevelHeightPx(mobileSheetLevel, window.innerHeight, homeTopOffset)
+    ? getLevelHeightPx(mobileSheetLevel, getViewportHeightPx(), homeTopOffset)
     : null;
   const mobilePanelLayerClass = isMobile && isDraggingSheet ? "z-[70]" : "z-20";
 
@@ -461,7 +466,7 @@ function App() {
   };
 
   return (
-    <div className="relative h-screen w-screen bg-slate-100">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-slate-100">
       <header
         ref={headerRef}
         className="absolute inset-x-0 top-0 z-50 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4"
@@ -536,7 +541,7 @@ function App() {
       <div
         style={{
           paddingTop: `${homeTopOffset}px`,
-          height: `calc(100vh - ${homeTopOffset}px)`,
+          height: `calc(100dvh - ${homeTopOffset}px)`,
         }}
         className={`flex md:flex-row ${isMobile && activeTab !== "home" ? "hidden" : ""}`}
       >
@@ -737,7 +742,6 @@ function App() {
           <ChatPlaceholder
             stores={stores}
             selectedGenre={selectedGenre === "すべて" ? null : selectedGenre}
-            topStoreNames={rankedStores.slice(0, 3).map((store) => store.name)}
             weights={weights}
             onSelectSuggestion={handleSelectSuggestedStore}
             onShowRankingWithWeights={handleShowRankingWithWeights}

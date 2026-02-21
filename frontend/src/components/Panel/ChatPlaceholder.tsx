@@ -9,7 +9,6 @@ import { PRESETS, type ChatMessage, type Store, type StoreWithScore, type Weight
 type Props = {
   stores: Store[];
   selectedGenre: string | null;
-  topStoreNames: string[];
   weights: Weights;
   onSelectSuggestion: (store: StoreWithScore, nextWeights: Weights) => void;
   onShowRankingWithWeights: (nextWeights: Weights) => void;
@@ -60,7 +59,6 @@ function buildOptimizedWeights(input: string, detectedMode: string | null, curre
 export default function ChatPlaceholder({
   stores,
   selectedGenre,
-  topStoreNames,
   weights,
   onSelectSuggestion,
   onShowRankingWithWeights,

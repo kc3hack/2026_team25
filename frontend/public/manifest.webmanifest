@@ -1,0 +1,24 @@
+{
+  "name": "Wagamama Gourmet",
+  "short_name": "Wagamama",
+  "description": "要望に沿って近くの飲食店を提案するアプリ",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#ff6b35",
+  "icons": [
+    {
+      "src": "/WagamamaGourmetLogo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -307,7 +307,7 @@ export default function StoreCard({
             disabled={isNavigating}
             className="h-11 w-full rounded-xl border-2 border-black bg-[#FF6B35] px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           >
-            {isNavigating ? "準備中..." : "現在地から道案内"}
+            {isNavigating ? "準備中..." : "ナビを開始"}
           </button>
         </div>
       </div>
