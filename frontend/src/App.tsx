@@ -485,7 +485,7 @@ function App() {
                   setMobileSheetLevel("topPeek");
                 }}
                 type="button"
-                className={`justify-self-start rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
+                className={`col-start-1 z-10 justify-self-start rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
                   ? "border-black bg-black text-white"
                   : "border-black bg-slate-100 text-black"
                   }`}
@@ -497,7 +497,7 @@ function App() {
                 onPointerDown={handleSheetPointerDown}
                 onTouchStart={handleSheetTouchStart}
                 type="button"
-                className={`relative mx-auto flex h-11 w-[clamp(5.5rem,26vw,8.5rem)] items-center justify-center rounded-full ${isDraggingSheet ? "cursor-grabbing" : "cursor-grab"
+                className={`pointer-events-auto absolute inset-x-0 top-1/2 z-0 mx-3 flex h-11 -translate-y-1/2 items-center justify-center rounded-full ${isDraggingSheet ? "cursor-grabbing" : "cursor-grab"
                   } touch-none select-none`}
                 aria-label="パネル高さを切り替え"
               >
@@ -510,7 +510,7 @@ function App() {
                   setMobileSheetLevel("half");
                 }}
                 type="button"
-                className={`justify-self-end rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
+                className={`col-start-3 z-10 justify-self-end rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
                   ? "border-black bg-black text-white"
                   : "border-black bg-slate-100 text-black"
                   }`}
