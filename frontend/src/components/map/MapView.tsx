@@ -33,6 +33,7 @@ type MarkerEntry = {
   popup: maplibregl.Popup;
   lng: number;
   lat: number;
+  markerZIndex: number;
   markerSignature: string;
   popupSignature: string;
 };
@@ -202,13 +203,19 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
   useEffect(() => {
     if (!mapRef.current) return;
 
+    const rankedVisibleStores = [...stores]
+      .filter((store) => store.visible)
+      .sort((a, b) => b.normalizedScore - a.normalizedScore);
+
     const rankMap = new Map<string, RankTier>();
-    [...stores]
-      .sort((a, b) => b.normalizedScore - a.normalizedScore)
-      .slice(0, 3)
-      .forEach((store, index) => {
+    const zIndexMap = new Map<string, number>();
+    rankedVisibleStores.forEach((store, index) => {
+      if (index < 3) {
         rankMap.set(store.id, (index + 1) as 1 | 2 | 3);
-      });
+      }
+      // Higher-ranked markers should stay in front when pins overlap.
+      zIndexMap.set(store.id, rankedVisibleStores.length - index);
+    });
 
     const nextStoreIds = new Set(stores.map((store) => store.id));
 
@@ -224,6 +231,7 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
     stores.forEach((store) => {
       const favorite = favoriteIds.has(store.id);
       const rank = rankMap.get(store.id) ?? null;
+      const markerZIndex = zIndexMap.get(store.id) ?? 0;
       const markerSignature = createMarkerSignature(store, rank);
       const popupSignature = createPopupSignature(store, favorite);
       const existing = markersRef.current.get(store.id);
@@ -238,6 +246,11 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
         if (existing.popupSignature !== popupSignature) {
           applyPopupContent(existing.popup, store, favorite);
           existing.popupSignature = popupSignature;
+        }
+
+        if (existing.markerZIndex !== markerZIndex) {
+          existing.marker.getElement().style.zIndex = String(markerZIndex);
+          existing.markerZIndex = markerZIndex;
         }
 
         if (existing.markerSignature !== markerSignature) {
@@ -257,6 +270,7 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
         .setLngLat([store.lng, store.lat])
         .setPopup(popup)
         .addTo(mapRef.current!);
+      marker.getElement().style.zIndex = String(markerZIndex);
 
       markersRef.current.set(store.id, {
         marker,
@@ -264,6 +278,7 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
         popup,
         lng: store.lng,
         lat: store.lat,
+        markerZIndex,
         markerSignature,
         popupSignature,
       });
