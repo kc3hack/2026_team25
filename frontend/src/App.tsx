@@ -495,7 +495,7 @@ function App() {
               <button
                 onPointerDown={handleSheetPointerDown}
                 onTouchStart={handleSheetTouchStart}
-                className={`flex items-center justify-center ${isDraggingSheet ? "cursor-grabbing" : "cursor-grab"
+                className={`min-h-14 min-w-28 px-5 py-3 flex items-center justify-center ${isDraggingSheet ? "cursor-grabbing" : "cursor-grab"
                   } touch-none select-none`}
                 aria-label="パネル高さを切り替え"
               >
