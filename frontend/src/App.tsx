@@ -31,13 +31,14 @@ import {
   type Weights,
 } from "./types";
 
-type MobileSheetLevel = "full" | "mid" | "half" | "closed";
+type MobileSheetLevel = "full" | "upper" | "mid" | "half" | "closed";
 const TOP_BAR_HEIGHT = 68;
 const GENRE_BAR_HEIGHT = 52;
 const BOTTOM_NAV_HEIGHT = 56;
 
 const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "full",
+  "upper",
   "mid",
   "half",
   "closed",
@@ -53,6 +54,7 @@ function getLevelHeightPx(
     viewportHeight - contentTopOffset - BOTTOM_NAV_HEIGHT
   );
   if (level === "full") return maxHeight;
+  if (level === "upper") return Math.max(240, maxHeight * 0.72);
   if (level === "mid") return Math.max(220, maxHeight * 0.5);
   if (level === "half") return Math.max(168, maxHeight * 0.28);
   return 92;
@@ -84,6 +86,7 @@ function App() {
   const { weights, updateWeight, applyPreset, resetWeights } = useWeights();
   const panelRef = useRef<HTMLElement | null>(null);
   const rankingSectionRef = useRef<HTMLDivElement | null>(null);
+  const rankingItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const headerRef = useRef<HTMLElement | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragStartHeightRef = useRef<number>(0);
@@ -364,6 +367,30 @@ function App() {
     if (!exists) setSelectedStore(null);
   }, [filteredStoresWithScore, selectedStore]);
 
+  useEffect(() => {
+    const selectedStoreId = selectedStore?.id;
+    if (!selectedStoreId) return;
+
+    const canShowRanking = !isMobile || (activeTab === "home" && mobileTab === "list");
+    if (!canShowRanking) return;
+    if (isMobile && mobileSheetLevel === "closed") return;
+
+    const target = rankingItemRefs.current.get(selectedStoreId);
+    if (!target) return;
+
+    requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (!panel) {
+        target.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+        return;
+      }
+
+      const topControlOffset = isMobile ? 76 : 16;
+      const nextTop = Math.max(0, target.offsetTop - topControlOffset);
+      panel.scrollTo({ top: nextTop, behavior: "smooth" });
+    });
+  }, [selectedStore?.id, isMobile, activeTab, mobileTab, mobileSheetLevel]);
+
   const allZero = Object.values(weights).every((v) => v === 0);
   const activePresetName = useMemo(() => {
     const presetEntries = Object.entries(PRESETS) as Array<[string, Weights]>;
@@ -431,7 +458,7 @@ function App() {
       setActiveTab("home");
       if (isMobile) {
         setMobileTab("list");
-        setMobileSheetLevel("half");
+        setMobileSheetLevel("upper");
       }
     },
     [filteredStoresWithScore, isMobile]
@@ -661,7 +688,17 @@ function App() {
                 const isSelected = selectedStore?.id === store.id;
 
                 return (
-                  <div key={store.id} className="space-y-2">
+                  <div
+                    key={store.id}
+                    className="space-y-2"
+                    ref={(el) => {
+                      if (el) {
+                        rankingItemRefs.current.set(store.id, el);
+                      } else {
+                        rankingItemRefs.current.delete(store.id);
+                      }
+                    }}
+                  >
                     <button
                       onClick={() =>
                         setSelectedStore((prev) =>

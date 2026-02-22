@@ -33,7 +33,8 @@ export function MapMarker({ store, rank = null }: MapMarkerProps) {
     prevScoreRef.current = currentScore;
   }, [store.normalizedScore, controls]);
 
-  const isRecommended = store.normalizedScore > 0.7;
+  const isTopRanked = rank !== null;
+  const isRecommended = store.normalizedScore > 0.7 || isTopRanked;
   const medalClass =
     rank === 1
       ? "map-pin--gold"
