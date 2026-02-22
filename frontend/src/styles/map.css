@@ -245,3 +245,13 @@
   width: 100%;
   height: 100%;
 }
+
+/* --- ピン詳細ポップアップはピンより前面に固定 --- */
+.maplibregl-popup {
+  z-index: 200001 !important;
+}
+
+.maplibregl-popup-content {
+  border-radius: 14px !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22) !important;
+}

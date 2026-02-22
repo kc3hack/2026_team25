@@ -50,8 +50,8 @@ function buildLocalChatFallback(request: ChatRequest): ChatResponse {
   const genre = request.context?.selectedGenre;
 
   const lines = [
-    "バックエンド未接続のため、ローカル回答モードで提案します。",
-    genre ? `ジャンルは「${genre}」優先で探すのがおすすめです。` : "まずジャンルを1つ決めると絞り込みが速くなります。",
+    "",
+    genre ? `ジャンルは「${genre}」優先で探すのがおすすめです。` : 
     top.length > 0 ? `現在の候補上位: ${top.join("、")}` : "候補店舗を読み込み中です。",
     "予算・移動時間・利用シーンのどれか1つを追加すると、さらに絞れます。",
   ];

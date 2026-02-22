@@ -10,6 +10,7 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    print("⚠ WARNING: SUPABASE_URL or SUPABASE_KEY is not set.")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print("⚠ WARNING: SUPABASE_URL or SUPABASE_KEY is not set. Running in MOCK mode (seed data fallback).")
+    supabase: Client | None = None
+else:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)

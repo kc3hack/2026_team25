@@ -8,22 +8,21 @@ import { createRoot, type Root } from "react-dom/client";
 import maplibregl from "maplibre-gl";
 import type { StoreWithScore } from "../../types";
 import { MapMarker } from "./MapMarker";
-import {
-  TRAVEL_MODE_OPTIONS,
-  isTravelMode,
-  openDirectionsInGoogleMaps,
-} from "../../lib/navigation";
 import "../../styles/map.css";
 
 /** KRP（京都リサーチパーク）の座標 */
 const KRP_CENTER = { lng: 135.7467, lat: 34.9937 };
 const DEFAULT_ZOOM = 15;
 const MAP_STYLE_URL = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+const POPUP_LAYOUT_VERSION = 2;
 
 interface MapViewProps {
   stores: StoreWithScore[];
   favoriteIds: Set<string>;
   onToggleFavorite: (storeId: string) => void;
+  onOpenDetails: (storeId: string) => void;
+  selectedStoreId?: string | null;
+  topRankedStores?: Array<{ storeId: string; rank: RankTier }>;
 }
 
 type RankTier = 1 | 2 | 3 | null;
@@ -57,10 +56,17 @@ function createMarkerSignature(store: StoreWithScore, rank: RankTier): string {
 }
 
 function createPopupSignature(store: StoreWithScore, favorite: boolean): string {
-  return `${store.name}|${store.genre}|${favorite ? 1 : 0}`;
+  return `${POPUP_LAYOUT_VERSION}|${store.name}|${store.genre}|${favorite ? 1 : 0}`;
 }
 
-export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapViewProps) {
+export default function MapView({
+  stores,
+  favoriteIds,
+  onToggleFavorite,
+  onOpenDetails,
+  selectedStoreId = null,
+  topRankedStores = [],
+}: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
@@ -74,105 +80,72 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
     const button = popupEl?.querySelector<HTMLButtonElement>(`button[data-fav-store-id="${storeId}"]`);
     if (!button) return;
 
-    button.textContent = favorite ? "★" : "☆";
+    button.textContent = favorite ? "♥" : "♡";
+    button.style.color = favorite ? "#ef4444" : "#111";
     button.setAttribute("aria-label", favorite ? "お気に入り解除" : "お気に入り登録");
     button.onclick = (event) => {
       event.preventDefault();
       event.stopPropagation();
 
-      const nextFavorite = button.textContent !== "★";
-      button.textContent = nextFavorite ? "★" : "☆";
+      const nextFavorite = button.textContent !== "♥";
+      button.style.color = nextFavorite ? "#ef4444" : "#111";
+      button.textContent = nextFavorite ? "♥" : "♡";
       button.setAttribute("aria-label", nextFavorite ? "お気に入り解除" : "お気に入り登録");
       onToggleFavorite(storeId);
     };
   }, [onToggleFavorite]);
 
-  const bindNavigateButton = useCallback((popup: maplibregl.Popup, store: StoreWithScore) => {
+  const bindDetailButton = useCallback((popup: maplibregl.Popup, store: StoreWithScore) => {
     const popupEl = popup.getElement();
-    const button = popupEl?.querySelector<HTMLButtonElement>(`button[data-nav-store-id="${store.id}"]`);
+    const button = popupEl?.querySelector<HTMLButtonElement>(`button[data-detail-store-id="${store.id}"]`);
     if (!button) return;
 
-    const modeSelect = popupEl?.querySelector<HTMLSelectElement>(
-      `select[data-nav-mode-store-id="${store.id}"]`
-    );
-
-    button.onclick = async (event) => {
+    button.onclick = (event) => {
       event.preventDefault();
       event.stopPropagation();
 
-      if (button.disabled) return;
-
-      const originalText = button.textContent;
-      button.disabled = true;
-      button.textContent = "準備中...";
-
-      try {
-        const modeValue = modeSelect?.value ?? "walking";
-        const mode = isTravelMode(modeValue) ? modeValue : "walking";
-        await openDirectionsInGoogleMaps({
-          destination: { lat: store.lat, lng: store.lng },
-          mode,
-        });
-      } finally {
-        button.disabled = false;
-        button.textContent = originalText;
-      }
+      onOpenDetails(store.id);
+      popup.remove();
     };
-  }, []);
+  }, [onOpenDetails]);
 
   const applyPopupContent = useCallback((
     popup: maplibregl.Popup,
     store: StoreWithScore,
     favorite: boolean
   ) => {
-    const travelModeOptions = TRAVEL_MODE_OPTIONS.map(
-      (option) => `<option value="${option.value}">${option.label}</option>`
-    ).join("");
-
     popup.setHTML(
       `
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-size:12px;font-weight:600;color:#4b5563;">${escapeHtml(store.genre)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
           <strong>${escapeHtml(store.name)}</strong>
           <button
             data-fav-store-id="${store.id}"
-            style="border:1.5px solid #111;border-radius:9999px;background:#fff;padding:2px 6px;cursor:pointer;font-weight:700;line-height:1;"
+            style="border:1.5px solid #111;border-radius:9999px;background:#fff;padding:2px 6px;cursor:pointer;font-weight:700;line-height:1;color:${favorite ? "#ef4444" : "#111"};"
             aria-label="${favorite ? "お気に入り解除" : "お気に入り登録"}"
           >
-            ${favorite ? "★" : "☆"}
+            ${favorite ? "♥" : "♡"}
           </button>
         </div>
-        <div>${escapeHtml(store.genre)}</div>
-        <div style="margin-top:8px;">
-          <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">
-            移動手段
-          </label>
-          <select
-            data-nav-mode-store-id="${store.id}"
-            aria-label="移動手段"
-            style="width:100%;border:1.5px solid #111;border-radius:8px;background:#fff;padding:6px 8px;font-weight:600;"
-          >
-            ${travelModeOptions}
-          </select>
-        </div>
         <button
-          data-nav-store-id="${store.id}"
+          data-detail-store-id="${store.id}"
           style="margin-top:8px;border:1.5px solid #111;border-radius:10px;background:#ff6b35;color:#fff;padding:6px 10px;cursor:pointer;font-weight:800;"
         >
-          現在地から道案内
+          詳細表示
         </button>
       `
     );
 
     if (popup.isOpen()) {
       bindFavoriteButton(popup, store.id, favorite);
-      bindNavigateButton(popup, store);
+      bindDetailButton(popup, store);
       return;
     }
     popup.once("open", () => {
       bindFavoriteButton(popup, store.id, favorite);
-      bindNavigateButton(popup, store);
+      bindDetailButton(popup, store);
     });
-  }, [bindFavoriteButton, bindNavigateButton]);
+  }, [bindDetailButton, bindFavoriteButton]);
 
   // 地図の初期化
   useEffect(() => {
@@ -203,18 +176,28 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
   useEffect(() => {
     if (!mapRef.current) return;
 
-    const rankedVisibleStores = [...stores]
-      .filter((store) => store.visible)
-      .sort((a, b) => b.normalizedScore - a.normalizedScore);
-
     const rankMap = new Map<string, RankTier>();
     const zIndexMap = new Map<string, number>();
-    rankedVisibleStores.forEach((store, index) => {
-      if (index < 3) {
-        rankMap.set(store.id, (index + 1) as 1 | 2 | 3);
+    topRankedStores.forEach(({ storeId, rank }) => {
+      if (rank) {
+        rankMap.set(storeId, rank);
       }
-      // Higher-ranked markers should stay in front when pins overlap.
+    });
+
+    const rankedVisibleStores = [...stores]
+      .filter((store) => store.visible)
+      .sort((a, b) => {
+        const scoreDiff = b.normalizedScore - a.normalizedScore;
+        if (Math.abs(scoreDiff) > Number.EPSILON) return scoreDiff;
+        return a.id.localeCompare(b.id);
+      });
+    rankedVisibleStores.forEach((store, index) => {
       zIndexMap.set(store.id, rankedVisibleStores.length - index);
+    });
+
+    topRankedStores.forEach(({ storeId, rank }) => {
+      const weight = rank ?? 999;
+      zIndexMap.set(storeId, 100000 - weight);
     });
 
     const nextStoreIds = new Set(stores.map((store) => store.id));
@@ -283,7 +266,21 @@ export default function MapView({ stores, favoriteIds, onToggleFavorite }: MapVi
         popupSignature,
       });
     });
-  }, [stores, favoriteIds, applyPopupContent]);
+  }, [stores, favoriteIds, applyPopupContent, topRankedStores]);
+
+  useEffect(() => {
+    if (!selectedStoreId) return;
+
+    const entry = markersRef.current.get(selectedStoreId);
+    const map = mapRef.current;
+    if (!entry || !map) return;
+
+    entry.popup.addTo(map);
+    map.easeTo({
+      center: [entry.lng, entry.lat],
+      duration: 300,
+    });
+  }, [selectedStoreId]);
 
   return <div ref={mapContainer} className="map-container" />;
 }

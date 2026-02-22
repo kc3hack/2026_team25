@@ -13,8 +13,9 @@ import {
   type PointerEvent as ReactPointerEvent,
   type TouchEvent as ReactTouchEvent,
 } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import BottomNav, { type Tab } from "./components/Panel/BottomNav";
-import MapView from "./components/map/MapView";
+import MapView from "./components/Map/MapView";
 import ChatPlaceholder from "./components/Panel/ChatPlaceholder";
 import ProfileView from "./components/Panel/ProfileView";
 import PresetButtons from "./components/Panel/PresetButtons";
@@ -24,18 +25,21 @@ import { useWeights } from "./hooks/useWeights";
 import { calculateScores } from "./lib/scoreEngine";
 import { fetchStores } from "./lib/api";
 import {
+  PRESETS,
   type Store,
   type StoreWithScore,
   type Weights,
 } from "./types";
 
-type MobileSheetLevel = "full" | "half" | "closed";
+type MobileSheetLevel = "full" | "upper" | "mid" | "half" | "closed";
 const TOP_BAR_HEIGHT = 68;
 const GENRE_BAR_HEIGHT = 52;
 const BOTTOM_NAV_HEIGHT = 56;
 
 const MOBILE_SHEET_LEVELS: MobileSheetLevel[] = [
   "full",
+  "upper",
+  "mid",
   "half",
   "closed",
 ];
@@ -50,8 +54,15 @@ function getLevelHeightPx(
     viewportHeight - contentTopOffset - BOTTOM_NAV_HEIGHT
   );
   if (level === "full") return maxHeight;
+  if (level === "upper") return Math.max(240, maxHeight * 0.72);
+  if (level === "mid") return Math.max(220, maxHeight * 0.5);
   if (level === "half") return Math.max(168, maxHeight * 0.28);
   return 92;
+}
+
+function getViewportHeightPx(): number {
+  if (typeof window === "undefined") return 0;
+  return window.visualViewport?.height ?? window.innerHeight;
 }
 
 function App() {
@@ -67,7 +78,7 @@ function App() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
   const [topBarHeight, setTopBarHeight] = useState(TOP_BAR_HEIGHT);
-  const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>("half");
+  const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>("closed");
   const [mobileTab, setMobileTab] = useState<"controls" | "list">("controls");
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const [mobileDragHeight, setMobileDragHeight] = useState<number | null>(null);
@@ -75,6 +86,7 @@ function App() {
   const { weights, updateWeight, applyPreset, resetWeights } = useWeights();
   const panelRef = useRef<HTMLElement | null>(null);
   const rankingSectionRef = useRef<HTMLDivElement | null>(null);
+  const rankingItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const headerRef = useRef<HTMLElement | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragStartHeightRef = useRef<number>(0);
@@ -146,7 +158,11 @@ function App() {
     () =>
       [...filteredStoresWithScore]
         .filter((s) => s.visible)
-        .sort((a, b) => b.normalizedScore - a.normalizedScore),
+        .sort((a, b) => {
+          const scoreDiff = b.normalizedScore - a.normalizedScore;
+          if (Math.abs(scoreDiff) > Number.EPSILON) return scoreDiff;
+          return a.id.localeCompare(b.id);
+        }),
     [filteredStoresWithScore]
   );
 
@@ -157,6 +173,21 @@ function App() {
         .sort((a, b) => b.normalizedScore - a.normalizedScore),
     [storesWithScore, favoriteIds]
   );
+
+  const rankedStoresWithRank = useMemo(() => {
+    let prevPoint: number | null = null;
+    let prevRank = 0;
+
+    return rankedStores.map((store, index) => {
+      const point = Number((store.normalizedScore * 100).toFixed(0));
+      const rank = prevPoint === point ? prevRank : index + 1;
+
+      prevPoint = point;
+      prevRank = rank;
+
+      return { store, rank, point };
+    });
+  }, [rankedStores]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -171,7 +202,7 @@ function App() {
         setMobileSheetLevel("half");
         setActiveTab("home");
       } else {
-        setMobileSheetLevel("half");
+        setMobileSheetLevel("closed");
       }
     };
 
@@ -187,7 +218,7 @@ function App() {
     dragStartYRef.current = e.clientY;
     dragStartHeightRef.current = getLevelHeightPx(
       mobileSheetLevel,
-      window.innerHeight,
+      getViewportHeightPx(),
       homeTopOffset
     );
     setMobileDragHeight(dragStartHeightRef.current);
@@ -202,7 +233,7 @@ function App() {
     const onMove = (moveEvent: PointerEvent) => {
       if (activePointerIdRef.current !== moveEvent.pointerId) return;
       if (dragStartYRef.current === null) return;
-      const viewportHeight = window.innerHeight;
+      const viewportHeight = getViewportHeightPx();
       const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
       const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
       const delta = moveEvent.clientY - dragStartYRef.current;
@@ -230,7 +261,7 @@ function App() {
       if (startY === null) return;
 
       const delta = upEvent.clientY - startY;
-      const viewportHeight = window.innerHeight;
+      const viewportHeight = getViewportHeightPx();
       const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
       const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
 
@@ -265,7 +296,7 @@ function App() {
     dragStartYRef.current = touch.clientY;
     dragStartHeightRef.current = getLevelHeightPx(
       mobileSheetLevel,
-      window.innerHeight,
+      getViewportHeightPx(),
       homeTopOffset
     );
     setMobileDragHeight(dragStartHeightRef.current);
@@ -276,7 +307,7 @@ function App() {
       if (!nextTouch || dragStartYRef.current === null) return;
       moveEvent.preventDefault();
 
-      const viewportHeight = window.innerHeight;
+      const viewportHeight = getViewportHeightPx();
       const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
       const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
       const delta = nextTouch.clientY - dragStartYRef.current;
@@ -303,7 +334,7 @@ function App() {
       if (!changed) return;
 
       const delta = changed.clientY - startY;
-      const viewportHeight = window.innerHeight;
+      const viewportHeight = getViewportHeightPx();
       const minHeight = getLevelHeightPx("closed", viewportHeight, homeTopOffset);
       const maxHeight = getLevelHeightPx("full", viewportHeight, homeTopOffset);
 
@@ -336,16 +367,48 @@ function App() {
     if (!exists) setSelectedStore(null);
   }, [filteredStoresWithScore, selectedStore]);
 
-  const visibleCount = rankedStores.length;
+  useEffect(() => {
+    const selectedStoreId = selectedStore?.id;
+    if (!selectedStoreId) return;
+
+    const canShowRanking = !isMobile || (activeTab === "home" && mobileTab === "list");
+    if (!canShowRanking) return;
+    if (isMobile && mobileSheetLevel === "closed") return;
+
+    const target = rankingItemRefs.current.get(selectedStoreId);
+    if (!target) return;
+
+    requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (!panel) {
+        target.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+        return;
+      }
+
+      const topControlOffset = isMobile ? 76 : 16;
+      const nextTop = Math.max(0, target.offsetTop - topControlOffset);
+      panel.scrollTo({ top: nextTop, behavior: "smooth" });
+    });
+  }, [selectedStore?.id, isMobile, activeTab, mobileTab, mobileSheetLevel]);
+
   const allZero = Object.values(weights).every((v) => v === 0);
-  const isDummyMode = !import.meta.env.VITE_API_URL;
+  const activePresetName = useMemo(() => {
+    const presetEntries = Object.entries(PRESETS) as Array<[string, Weights]>;
+    const matched = presetEntries.find(([, preset]) =>
+      (Object.keys(preset) as (keyof Weights)[]).every(
+        (key) => weights[key] === preset[key]
+      )
+    );
+    return matched?.[0] ?? null;
+  }, [weights]);
   const showHomeGenreBar = !isMobile || activeTab === "home";
   const homeTopOffset = topBarHeight + (showHomeGenreBar ? GENRE_BAR_HEIGHT : 0);
   const showMobileBody = !isMobile || mobileSheetLevel !== "closed";
   const bottomNavOffset = isMobile && activeTab === "chat" ? keyboardInset : 0;
   const mobileSheetHeightPx = isMobile
-    ? getLevelHeightPx(mobileSheetLevel, window.innerHeight, homeTopOffset)
+    ? getLevelHeightPx(mobileSheetLevel, getViewportHeightPx(), homeTopOffset)
     : null;
+  const mobilePanelLayerClass = isMobile && isDraggingSheet ? "z-[70]" : "z-20";
 
   const toggleFavorite = useCallback((storeId: string) => {
     setFavoriteIds((prev) => {
@@ -372,6 +435,51 @@ function App() {
     [applyPreset, isMobile]
   );
 
+  const handleShowRankingWithWeights = useCallback(
+    (nextWeights: Weights) => {
+      applyPreset(nextWeights);
+      setSelectedStore(null);
+      setActiveTab("home");
+      if (isMobile) {
+        setMobileTab("list");
+        setMobileSheetLevel("half");
+      }
+      rankingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [applyPreset, isMobile]
+  );
+
+  const handleOpenStoreFromMap = useCallback(
+    (storeId: string) => {
+      const target = filteredStoresWithScore.find((store) => store.id === storeId);
+      if (!target) return;
+
+      setSelectedStore(target);
+      setActiveTab("home");
+      if (isMobile) {
+        setMobileTab("list");
+        setMobileSheetLevel("upper");
+      }
+    },
+    [filteredStoresWithScore, isMobile]
+  );
+
+  const handleQuickModeSelect = useCallback(
+    (presetWeights: Weights) => {
+      const isSamePreset = (Object.keys(presetWeights) as (keyof Weights)[]).every(
+        (key) => weights[key] === presetWeights[key]
+      );
+
+      if (isSamePreset) {
+        resetWeights();
+        return;
+      }
+
+      applyPreset(presetWeights);
+    },
+    [weights, applyPreset, resetWeights]
+  );
+
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSearchQuery((prev) => prev.trim());
@@ -385,10 +493,10 @@ function App() {
   };
 
   return (
-    <div className="relative h-screen w-screen bg-slate-100">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-slate-100">
       <header
         ref={headerRef}
-        className="absolute inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4"
+        className="absolute inset-x-0 top-0 z-50 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur md:px-4"
       >
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <button
@@ -438,7 +546,7 @@ function App() {
       {showHomeGenreBar && (
         <section
           style={{ top: `${topBarHeight}px` }}
-          className="absolute inset-x-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur"
+          className="absolute inset-x-0 z-40 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur"
         >
           <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto pb-1">
             {genres.map((genre) => (
@@ -460,7 +568,7 @@ function App() {
       <div
         style={{
           paddingTop: `${homeTopOffset}px`,
-          height: `calc(100vh - ${homeTopOffset}px)`,
+          height: `calc(100dvh - ${homeTopOffset}px)`,
         }}
         className={`flex md:flex-row ${isMobile && activeTab !== "home" ? "hidden" : ""}`}
       >
@@ -475,20 +583,19 @@ function App() {
               }
               : undefined
           }
-          className={`z-20 order-2 flex w-full shrink-0 flex-col overflow-y-auto bg-slate-50 transition-all duration-300 md:order-1 md:h-full md:w-[390px] md:border-r md:border-t-0 ${isMobile
+          className={`${mobilePanelLayerClass} order-2 flex w-full shrink-0 flex-col overflow-y-auto bg-slate-50 transition-all duration-300 md:order-1 md:h-full md:w-[390px] md:border-r md:border-t-0 ${isMobile
             ? "absolute bottom-14 left-0 right-0 rounded-t-3xl border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.18)]"
             : "h-full border-t"
             }`}
         >
           {isMobile && (
-            <div className="sticky top-0 z-30 grid min-h-12 grid-cols-[1fr_auto_1fr] items-center gap-2 bg-white/95 px-3 pb-2 pt-2 backdrop-blur">
+            <div className="sticky top-0 z-30 grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 bg-white/95 px-3 backdrop-blur">
               <button
                 onClick={() => {
                   setMobileTab("controls");
-                  setMobileSheetLevel("half");
                 }}
                 type="button"
-                className={`col-start-1 z-10 justify-self-start rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
+                className={`col-start-1 z-10 w-[70%] justify-self-center rounded-3xl border-[3px] px-3 py-1 text-center text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "controls"
                   ? "border-black bg-black text-white"
                   : "border-black bg-slate-100 text-black"
                   }`}
@@ -510,10 +617,9 @@ function App() {
               <button
                 onClick={() => {
                   setMobileTab("list");
-                  setMobileSheetLevel("half");
                 }}
                 type="button"
-                className={`col-start-3 z-10 justify-self-end rounded-3xl border-[3px] px-3 py-1 text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
+                className={`col-start-3 z-10 w-[70%] justify-self-center rounded-3xl border-[3px] px-3 py-1 text-center text-xs font-black shadow-[0_3px_0_0_rgba(0,0,0,1)] transition-all ${mobileTab === "list"
                   ? "border-black bg-black text-white"
                   : "border-black bg-slate-100 text-black"
                   }`}
@@ -523,20 +629,25 @@ function App() {
             </div>
           )}
 
-          <div className="sticky top-0 z-20 border-b border-slate-200 bg-white p-4 backdrop-blur">
-
-            {isDummyMode && (
-              <p className="mt-2 text-[11px] font-medium text-slate-500">※ ダミーデータで表示中</p>
-            )}
-          </div>
-
           {showMobileBody ? (
             <>
               {(!isMobile || mobileTab === "controls") && (
                 <div className="space-y-3 p-4">
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <p className="mb-2 text-xs font-black tracking-wide text-slate-500">クイックモード</p>
-                    <PresetButtons onSelect={applyPreset} onReset={resetWeights} />
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-black tracking-wide text-slate-500">クイックモード</p>
+                      <button
+                        type="button"
+                        onClick={resetWeights}
+                        className="inline-flex min-h-11 items-center rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                      >
+                        リセット
+                      </button>
+                    </div>
+                    <PresetButtons
+                      onSelect={handleQuickModeSelect}
+                      activePresetName={activePresetName}
+                    />
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                     <p className="mb-2 text-xs font-black tracking-wide text-slate-500">こだわりスライダー</p>
@@ -547,13 +658,7 @@ function App() {
 
             </>
           ) : (
-            <div className="px-4 pb-4">
-              <button
-                onClick={() => setMobileSheetLevel("half")}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
-              >
-                ⬆ 上にスワイプする感覚でタップして展開
-              </button>
+            <div className="h-14 bg-white" aria-hidden="true">
             </div>
           )}
 
@@ -567,37 +672,48 @@ function App() {
           )}
 
           {/* --- 全スライダー0のヒント --- */}
-          {!loading && allZero && (
+          {!loading && allZero && (!isMobile || mobileSheetLevel !== "closed") && (
             <div className="border-t border-slate-200 p-4 text-center text-sm text-slate-400">
               スライダーを動かして条件を設定しましょう
             </div>
           )}
 
           {/* --- 店舗ランキング --- */}
-          {!loading && rankedStores.length > 0 && (!isMobile || mobileTab === "list") && (
+          {!loading && rankedStores.length > 0 && (!isMobile || (mobileTab === "list" && mobileSheetLevel !== "closed")) && (
             <div
               ref={rankingSectionRef}
               className="flex flex-col gap-2 border-t border-slate-200 bg-white p-4"
             >
-              <h2 className="mb-1 text-sm font-bold text-slate-600">
-                ランキング（{visibleCount} / {filteredStoresWithScore.length} 店舗）
-              </h2>
-              {rankedStores.map((store, i) => {
+              {rankedStoresWithRank.map(({ store, rank, point }) => {
                 const isSelected = selectedStore?.id === store.id;
 
                 return (
-                  <div key={store.id} className="space-y-2">
+                  <div
+                    key={store.id}
+                    className="space-y-2"
+                    ref={(el) => {
+                      if (el) {
+                        rankingItemRefs.current.set(store.id, el);
+                      } else {
+                        rankingItemRefs.current.delete(store.id);
+                      }
+                    }}
+                  >
                     <button
-                      onClick={() => setSelectedStore(store)}
+                      onClick={() =>
+                        setSelectedStore((prev) =>
+                          prev?.id === store.id ? null : store
+                        )
+                      }
                       className={`relative flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-slate-300 hover:bg-slate-50 ${isSelected ? "border-black" : ""
                         }`}
                     >
-                      {i < 3 && (
+                      {rank <= 3 && (
                         <span className="absolute -left-2 -top-2 rounded-md bg-orange-500 px-1.5 py-0.5 text-[9px] font-black text-white">
-                          TOP {i + 1}
+                          TOP {rank}
                         </span>
                       )}
-                      <span className="w-5 shrink-0 text-center text-xs font-bold text-slate-400">{i + 1}</span>
+                      <span className="w-5 shrink-0 text-center text-xs font-bold text-slate-400">{rank}</span>
                       <span
                         className="h-3 w-3 shrink-0 rounded-full"
                         style={{ backgroundColor: store.pinColor }}
@@ -606,18 +722,27 @@ function App() {
                         {store.name}
                       </span>
                       <span className="shrink-0 rounded-md bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                        {(store.normalizedScore * 100).toFixed(0)}pt
+                        {point}pt
                       </span>
                     </button>
 
-                    {isSelected && (
-                      <StoreCard
-                        store={store}
-                        isFavorite={favoriteIds.has(store.id)}
-                        onToggleFavorite={() => toggleFavorite(store.id)}
-                        onClose={() => setSelectedStore(null)}
-                      />
-                    )}
+                    <AnimatePresence initial={false}>
+                      {isSelected && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.2, ease: "easeOut" }}
+                        >
+                          <StoreCard
+                            store={store}
+                            isFavorite={favoriteIds.has(store.id)}
+                            onToggleFavorite={() => toggleFavorite(store.id)}
+                            onClose={() => setSelectedStore(null)}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               })}
@@ -626,12 +751,20 @@ function App() {
         </aside>
 
         {/* --- 地図エリア --- */}
-        <main className="order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
+        <main className="relative z-10 order-1 h-full flex-1 p-0 md:order-2 md:h-full md:p-3">
           <div className="h-full w-full overflow-hidden bg-white md:rounded-2xl md:border md:border-slate-200 md:shadow-sm">
             <MapView
               stores={filteredStoresWithScore}
               favoriteIds={favoriteIds}
               onToggleFavorite={toggleFavorite}
+              onOpenDetails={handleOpenStoreFromMap}
+              selectedStoreId={selectedStore?.id ?? null}
+              topRankedStores={rankedStoresWithRank
+                .filter(({ rank }) => rank <= 3)
+                .map(({ store, rank }) => ({
+                  storeId: store.id,
+                  rank: rank as 1 | 2 | 3,
+                }))}
             />
           </div>
         </main>
@@ -646,9 +779,9 @@ function App() {
           <ChatPlaceholder
             stores={stores}
             selectedGenre={selectedGenre === "すべて" ? null : selectedGenre}
-            topStoreNames={rankedStores.slice(0, 3).map((store) => store.name)}
             weights={weights}
             onSelectSuggestion={handleSelectSuggestedStore}
+            onShowRankingWithWeights={handleShowRankingWithWeights}
           />
         </section>
       )}
