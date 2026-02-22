@@ -64,10 +64,8 @@ Wagamama Gourmet は、スライダーとプリセットで優先度を可視化
 - フロントとバックのスコア計算ロジック整合性を確保
 - API障害時フォールバックを実装し、デモの耐障害性を向上
 - 主要機能のテストを用意し、短期間でも品質を担保
-- 明日の発表で誰でも体験できるよう、依存関係がなくても動く運用を準備
 
 ## 使用技術
-
 - Frontend: React, TypeScript, Vite, Tailwind CSS, MapLibre GL JS, framer-motion
 - Backend: FastAPI, Python, Pydantic, Uvicorn
 - Database: Supabase (PostgreSQL)
