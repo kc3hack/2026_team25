@@ -248,7 +248,7 @@
 
 /* --- ピン詳細ポップアップはピンより前面に固定 --- */
 .maplibregl-popup {
-  z-index: 1200 !important;
+  z-index: 200001 !important;
 }
 
 .maplibregl-popup-content {
